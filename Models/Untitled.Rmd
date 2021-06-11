@@ -159,7 +159,7 @@ Getting at within-person association between game play and well being, ignoring 
 
 ```{r}
 dat <- sim(
-  N = 100, n = 3,
+  N = 200, n = 3,
   b_xy = .25, 
   tau_x = 1, tau_xy = .33
 )
@@ -171,10 +171,7 @@ dat <- dat %>%
   group_by(pid) %>% 
   mutate(xb = mean(x), yb = mean(y), xw = x-xb, yw = y-yb) %>% 
   ungroup()
-model <- 
-  bf(yw ~ xw + (xw |p| pid)) +
-  bf(xw ~ yw + (yw |p| pid)) +
-  set_rescor(FALSE)
+model <- bf(yw ~ xw + (xw | pid))
 fit <- brm(
   model,
   data = dat,
