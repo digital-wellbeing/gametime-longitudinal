@@ -1,0 +1,187 @@
+---
+title: 'Exploring different modelling strategies for longitudinal gameplay and well-being data.'
+author: "Matti"
+date: "10/06/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# MC settings: use 4 cores and cmdstanr for backend
+options(mc.cores = parallel::detectCores(logical = FALSE))
+options(brms.backend = "cmdstanr")
+# Maybe use these or not
+mcmc_opts <- list(
+  iter = 3500, warmup = 1500,
+  control = list(adapt_delta = .90, max_treedepth = 10)
+)
+# Run this to delete fitted models and refit
+# unlink(list.files(pattern = "brm-.*\\.rds"))
+```
+
+```{r packages, results = 'hide'}
+library(lavaan)
+library(lme4)
+library(broom.mixed)
+library(dagitty)
+library(broom)
+library(brms)
+library(faux)  # rnorm_multi()
+library(tidyverse)
+```
+
+# Preface
+
+This document explores methods to model three-timepoint longitudinal multivariate data. We're interested ultimately in the causal effect of X (game play time) on Y (well being). But that is hard. There's also measures of motivations and cognitive well being (csas) ignored for now.
+
+For starters we examine the within- and between-person simultaneous associations.
+
+# Example data
+
+We simulate some data from variants of this model:
+
+```{r fig.height = 2}
+dag <- dagitty(
+  "dag{
+  x0 -> x1 -> x2
+  y0 -> y1 -> y2
+  y0 -> x0; y1 -> x1; y2 -> x2; y0 -> x1; y1 -> x2
+  x0 -> y0; x1 -> y1; x2 -> y2; x0 -> y1; x1 -> y2
+  }"
+)
+coordinates(dag) <- list(
+  x = c(x0 = 0, x1 = 1, x2 = 2, y0 = 0, y1 = 1, y2 = 2),
+  y = c(x0 = 0, x1 = 0, x2 = 0, y0 = 1, y1 = 1, y2 = 1)
+)
+plot(dag)
+```
+
+We simulate data for 50 people and 3 time points. See code for parameter values. Might be broken. This is just to get something to work with.
+
+```{r}
+sim <- function(
+  N = 50, n = 3,
+  mu_x = 0, mu_y = 0, sigma_x = 1, sigma_y = 1,
+  b_xlx = 0, b_xly = 0, b_yly = 0, b_ylx = 0, b_xy = 0, b_yx = 0,
+  tau_x = 0, tau_y = 0, 
+  tau_xlx = 0, tau_xly = 0, tau_yly = 0, tau_ylx = 0, tau_xy = 0, tau_yx = 0
+) {
+  # Create subject-specific parameters
+  rx <- rnorm_multi(
+    n = N, vars = 8,
+    mu = 0, 
+    sd = c(tau_x, tau_y, tau_xlx, tau_xly, tau_yly, tau_ylx, tau_xy, tau_yx), 
+    r = 0,
+    varnames = c("u_x", "u_y", "u_xlx", "u_xly", "u_yly", "u_ylx", "u_xy", "u_yx")
+  ) %>% 
+    rowid_to_column(var = "pid") %>% 
+    as_tibble()
+  
+  # Create data
+  dat <- rx %>% 
+    expand_grid(time = 0:(n-1)) %>% 
+    rowwise() %>% 
+    mutate(
+      # First with lag effects zero for first time point
+      # Write it out for clarity
+      x = rnorm(
+        1, 
+        (mu_x+u_x) + (b_ylx+u_ylx)*0 + (b_xlx+u_xlx)*0 + (b_yx+u_yx)*0, 
+        sigma_x
+      ),
+      y = rnorm(
+        1, 
+        (mu_y+u_y) + (b_xly+u_xly)*0 + (b_yly+u_yly)*0 + (b_xy+u_xy)*x, 
+        sigma_y
+      )
+    ) %>% 
+    group_by(pid) %>% 
+    mutate(x_lag = lag(x, 1), y_lag = lag(y, 1)) %>% 
+    rowwise() %>% 
+    mutate(
+      # Then apply lagged effects to timepoints after first one
+      x = ifelse(
+        is.na(x_lag),
+        x,
+        rnorm(
+          1,
+          (mu_x+u_x) + (b_ylx+u_ylx)*y_lag +
+            (b_xlx+u_xlx)*x_lag + (b_yx+u_yx)*y,
+          sigma_x
+        )
+      ),
+      y = ifelse(
+        is.na(y_lag),
+        y,
+        rnorm(
+          1,
+          (mu_y+u_y) + (b_xly+u_xly)*x_lag +
+            (b_yly+u_yly)*y_lag + (b_xy+u_xy)*x,
+          sigma_y
+        )
+      )
+    ) %>%
+    select(pid, time, x, x_lag, y, y_lag) %>% 
+    ungroup()
+  dat
+}
+```
+
+Let's see if this works
+
+```{r eval = FALSE}
+# Simple correlation
+expand_grid(run = 1:10, b_xy = 1) %>% 
+  rowwise() %>% 
+  mutate(data = list(sim(b_xy = b_xy))) %>% 
+  mutate(tab = list(lm(y ~ x, data = data) %>% tidy)) %>% 
+  select(-data) %>% 
+  unnest(tab) %>% 
+  bind_rows(.id = "Run") %>% 
+  group_by(term) %>%  
+  summarise(m = mean(estimate), sd = sd(estimate))
+
+# Random intercepts and fixed correlation
+expand_grid(run = 1:10, nesting(b_xy = 1, tau_y = 1)) %>% 
+  rowwise() %>% 
+  mutate(data = list(sim(b_xy = b_xy))) %>% 
+  mutate(tab = list(lmer(y ~ x + (1 | pid), data = data) %>% tidy)) %>% 
+  select(-data) %>% 
+  unnest(tab) %>% 
+  bind_rows(.id = "Run") %>% 
+  group_by(term) %>%  
+  summarise(m = mean(estimate), sd = sd(estimate))
+```
+
+# Model 1: simultaneous association
+
+Getting at within-person association between game play and well being, ignoring what happens over time. Do changes in game play within an individual predict changes in their mood, and vice versa? Pretty standard multilevel model. Centering?
+
+```{r}
+dat %>% 
+  filter(pid %in% sample(1:N, size = 9, replace = FALSE)) %>% 
+  ggplot(aes(x, y)) +
+  geom_point() +
+  geom_smooth(method = "lm", size = .5, se = FALSE) +
+  facet_wrap("pid")
+```
+
+
+```{r}
+dat <- dat %>% 
+  group_by(pid) %>% 
+  mutate(xc = x-mean(x), yc = y-mean(y)) #%>% 
+# mutate(xm = mean(x), ym = mean(y))
+model <- 
+  bf(yc ~ xc + (xc |p| pid)) +
+  bf(xc ~ yc + (yc |p| pid)) +
+  set_rescor(FALSE)
+fit <- brm(
+  model,
+  data = dat,
+  file = "brm-model-1",
+  iter = mcmc_opts$iter, warmup = mcmc_opts$warmup,
+  control = mcmc_opts$control
+)
+summary(fit)
+```
