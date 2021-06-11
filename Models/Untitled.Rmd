@@ -158,23 +158,22 @@ expand_grid(run = 1:10, nesting(b_xy = 1, tau_y = 1)) %>%
 Getting at within-person association between game play and well being, ignoring what happens over time. Do changes in game play within an individual predict changes in their mood, and vice versa? Pretty standard multilevel model. Centering?
 
 ```{r}
-dat %>% 
-  filter(pid %in% sample(1:N, size = 9, replace = FALSE)) %>% 
-  ggplot(aes(x, y)) +
-  geom_point() +
-  geom_smooth(method = "lm", size = .5, se = FALSE) +
-  facet_wrap("pid")
+dat <- sim(
+  N = 100, n = 3,
+  b_xy = .25, 
+  tau_x = 1, tau_xy = .33
+)
 ```
 
 
 ```{r}
 dat <- dat %>% 
   group_by(pid) %>% 
-  mutate(xc = x-mean(x), yc = y-mean(y)) #%>% 
-# mutate(xm = mean(x), ym = mean(y))
+  mutate(xb = mean(x), yb = mean(y), xw = x-xb, yw = y-yb) %>% 
+  ungroup()
 model <- 
-  bf(yc ~ xc + (xc |p| pid)) +
-  bf(xc ~ yc + (yc |p| pid)) +
+  bf(yw ~ xw + (xw |p| pid)) +
+  bf(xw ~ yw + (yw |p| pid)) +
   set_rescor(FALSE)
 fit <- brm(
   model,
