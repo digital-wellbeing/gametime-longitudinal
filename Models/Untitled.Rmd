@@ -1,16 +1,15 @@
 ---
-title: 'Exploring different modelling strategies for longitudinal gameplay and well-being data.'
+title: 'Proposed models for within-person associations of game play time and well-being'
 author: "Matti"
-date: "10/06/2021"
+date: "Today"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
+# Document and MC sampler settings
 knitr::opts_chunk$set(echo = TRUE)
-# MC settings: use 4 cores and cmdstanr for backend
 options(mc.cores = parallel::detectCores(logical = FALSE))
 options(brms.backend = "cmdstanr")
-# Maybe use these or not
 mcmc_opts <- list(
   iter = 3500, warmup = 1500,
   control = list(adapt_delta = .90, max_treedepth = 10)
@@ -32,37 +31,29 @@ library(tidyverse)
 
 # Preface
 
-This document explores methods to model three-timepoint longitudinal multivariate data. We're interested ultimately in the causal effect of X (game play time) on Y (well being). But that is hard. There's also measures of motivations and cognitive well being (csas) ignored for now.
+Our aim is to examine the within-person association between quantity of video game play (hours played) and well-being (primarily negative and positive subscales of SPANE, secondarily CSAS). Additionally, we want to examine how the players' motivations potentially moderate the relationship between game play and well-being. Here, we propose and specify a set of models for this examination.
 
-For starters we examine the within- and between-person simultaneous associations.
+The data will consist of up to three measurement occasions of the survey responses (SPANE, CSAS, motivations) per person, separated by about two weeks. In addition to this, we will have each player's gameplay telemetry (session times) for that 6 week period, which will be aggregated to hours played for each two week period corresponding to the survey responses. We will likely aggregate gameplay telemetry to average hours per day in each two week window, to account for slight variations in the response windows between participants. We expect significant drop-out between waves.
+
+With these data, our primary questions relate to
+
+- To what extent do changes in time spent playing predict changes in well-being within individuals?
+- Motivations
+- Time
 
 # Example data
 
-We simulate some data from variants of this model:
-
-```{r fig.height = 2}
-dag <- dagitty(
-  "dag{
-  x0 -> x1 -> x2
-  y0 -> y1 -> y2
-  y0 -> x0; y1 -> x1; y2 -> x2; y0 -> x1; y1 -> x2
-  x0 -> y0; x1 -> y1; x2 -> y2; x0 -> y1; x1 -> y2
-  }"
-)
-coordinates(dag) <- list(
-  x = c(x0 = 0, x1 = 1, x2 = 2, y0 = 0, y1 = 1, y2 = 2),
-  y = c(x0 = 0, x1 = 0, x2 = 0, y0 = 1, y1 = 1, y2 = 1)
-)
-plot(dag)
-```
-
-We simulate data for 50 people and 3 time points. See code for parameter values. Might be broken. This is just to get something to work with.
+We first simulate data under different assumptions about sample sizes and drop-out to examine models' behaviour. This would optimally be extended to a three-level situation. Improvements could be made to e.g. dropout function etc. Currently dropout is just a x% chance of that wave (2 or 3) missing.
 
 ```{r}
+# This function allows for a bunch of stuff we don't need
 sim <- function(
-  N = 50, n = 3,
+  N = 50, n = 3, dropout = 0,
+  # Population-level means and standard deviations
   mu_x = 0, mu_y = 0, sigma_x = 1, sigma_y = 1,
+  # Population level effects (xy = x's effect on y, xl = x lag)
   b_xlx = 0, b_xly = 0, b_yly = 0, b_ylx = 0, b_xy = 0, b_yx = 0,
+  # Standard deviations of person-specific parameters
   tau_x = 0, tau_y = 0, 
   tau_xlx = 0, tau_xly = 0, tau_yly = 0, tau_ylx = 0, tau_xy = 0, tau_yx = 0
 ) {
@@ -77,7 +68,7 @@ sim <- function(
     rowid_to_column(var = "pid") %>% 
     as_tibble()
   
-  # Create data
+  # Create data. This is hairy because allows lagged terms.
   dat <- rx %>% 
     expand_grid(time = 0:(n-1)) %>% 
     rowwise() %>% 
@@ -121,15 +112,29 @@ sim <- function(
         )
       )
     ) %>%
-    select(pid, time, x, x_lag, y, y_lag) %>% 
+    select(pid, time, x, y) %>% 
     ungroup()
-  dat
+  
+  # Dropout wow
+  dat[dat$time>0,] <- dat[dat$time>0,] %>% 
+    rowwise() %>% 
+    mutate(
+      across(
+        x:y, 
+        ~ifelse(sample(c(FALSE, TRUE), 1, prob = c(1-dropout, dropout)), NA, .)
+      )
+    ) %>% 
+    ungroup()
+    dat
 }
 ```
 
-Let's see if this works
-
 ```{r eval = FALSE}
+# Let's see if this works
+
+# Dropout
+table(is.na(sim(n = 100, dropout = .5)$x))
+
 # Simple correlation
 expand_grid(run = 1:10, b_xy = 1) %>% 
   rowwise() %>% 
@@ -153,29 +158,40 @@ expand_grid(run = 1:10, nesting(b_xy = 1, tau_y = 1)) %>%
   summarise(m = mean(estimate), sd = sd(estimate))
 ```
 
-# Model 1: simultaneous association
+# Two-level model
 
-Getting at within-person association between game play and well being, ignoring what happens over time. Do changes in game play within an individual predict changes in their mood, and vice versa? Pretty standard multilevel model. Centering?
+We simulate data for 1200 people and 3 time points, with 25% dropout.
 
 ```{r}
+set.seed(1)
 dat <- sim(
-  N = 200, n = 3,
+  N = 1000, n = 3, dropout = .25,
   b_xy = .25, 
-  tau_x = 1, tau_xy = .33
+  tau_x = 1, tau_xy = .33,
 )
 ```
 
+This is now fitted to this univariate outcome but we should fit it to the three well being variables simultaneously to borrow strength across the models in the random effects.
 
 ```{r}
+# Between and within-person centering of x and y
 dat <- dat %>% 
   group_by(pid) %>% 
-  mutate(xb = mean(x), yb = mean(y), xw = x-xb, yw = y-yb) %>% 
+  mutate(
+    # Person means (between-deviates)
+    xb = mean(x, na.rm = TRUE), 
+    yb = mean(y, na.rm = TRUE), 
+    # Within-deviates
+    xw = x-xb, 
+    yw = y-yb
+  ) %>% 
   ungroup()
-model <- bf(yw ~ xw + (xw | pid))
+model <- bf(yw ~ xw + xb + (xw | pid), family = gaussian())
 fit <- brm(
   model,
   data = dat,
-  file = "brm-model-1",
+  file = "brm-model-1", 
+  save_pars = save_pars(group = FALSE),
   iter = mcmc_opts$iter, warmup = mcmc_opts$warmup,
   control = mcmc_opts$control
 )
