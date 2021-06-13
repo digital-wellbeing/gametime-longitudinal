@@ -78,6 +78,7 @@ head(d)
 
 Let's fit the model using lavaan first, to have a reference model.
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 riclpm <- '
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3
@@ -198,6 +199,7 @@ compare_models(fit_brms_wide_RE, fit_RICLPM)
 # Long format?
 Should be similar to constrained lavaan RICLPM? 
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 riclpm2 <- '
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3

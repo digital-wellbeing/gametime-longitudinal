@@ -49,6 +49,7 @@ head(d)
 ```
 
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 riclpm <- '
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3

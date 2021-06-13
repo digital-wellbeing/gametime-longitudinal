@@ -51,6 +51,7 @@ head(d)
 ```
 
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 CLPM <- '
   # Estimate the lagged effects between the observed variables.
   x2 + y2 ~ x1 + y1

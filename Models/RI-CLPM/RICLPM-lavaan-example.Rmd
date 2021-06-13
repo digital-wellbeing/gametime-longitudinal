@@ -22,7 +22,6 @@ Mulder, J. D., & Hamaker, E. L. (2020). Three Extensions of the Random Intercept
 
 ```{r}
 # From: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
-
 riclpm <- '
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3 + 1*x4 + 1*x5
@@ -88,6 +87,7 @@ summary(fit_lavaan, standardized = TRUE)
 
 With 3 time points
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 riclpm <- '
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3

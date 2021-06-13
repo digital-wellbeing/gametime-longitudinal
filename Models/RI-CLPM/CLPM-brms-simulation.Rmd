@@ -80,6 +80,7 @@ d$id <- 1:nrow(d)
 ```
 
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 CLPM <- '
   # Estimate the lagged effects between the observed variables.
   x2 + y2 ~ x1 + y1
@@ -127,6 +128,7 @@ Coefs are identical.
 ## Long format?
 Can we get similar answers from a model in long format? I guess results should be similar to constrained CLPM in lavaan?
 ```{r}
+# Based on: https://jeroendmulder.github.io/RI-CLPM/lavaan.html
 CLPM_constrained <- '
   # Estimate the (constrained) lagged effects between the observed variables.
   x2 ~ a*x1 + b*y1 
