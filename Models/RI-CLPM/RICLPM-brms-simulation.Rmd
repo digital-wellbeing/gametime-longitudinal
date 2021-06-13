@@ -15,9 +15,16 @@ options(brms.backend = "cmdstanr")
 
 ## helper
 #' Compare regression coefs from brms and lavaan model
-compare_models <- function(fit_brms, fit_lavaan) {
-    coefs_brms <- fixef(fit_brms)[5:12, ]
-    coefs_lavaan <- coef(fit_lavaan)[1:8]
+compare_models <- function(fit_brms, fit_lavaan, constrained = FALSE) {
+    if(constrained) {
+        index_brms <- 3:6
+        index_lavaan <- c("d", "c", "a", "b")
+    } else {
+        index_brms <- 5:12
+        index_lavaan <- 1:8
+    }
+    coefs_brms <- fixef(fit_brms)[index_brms, ]
+    coefs_lavaan <- coef(fit_lavaan)[index_lavaan]
 
     data.frame(
         brms_terms = rownames(coefs_brms), 
