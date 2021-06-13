@@ -8,6 +8,7 @@ output: html_document
 ```{r setup}
 library(brms)
 library(lavaan)
+library(tidyverse)
 knitr::opts_knit$set(root.dir = "~/gametime-longitudinal")
 options(mc.cores = 4)
 options(brms.backend = "cmdstanr")
