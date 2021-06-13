@@ -1,7 +1,7 @@
 ---
 title: "brms RI-CLPM"
 author: "Kristoffer"
-date: "2021-06-12"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
