@@ -133,13 +133,12 @@ d_long <- pivot_longer(
     names_to = c(".value", "time"),
     names_pattern = c("(.)(.)")
 )
-d_long <- mutate(
-    d_long,
-    x_lag = lag(x),
-    y_lag = lag(y)
-) %>%
+d_long <- 
+    d_long %>% 
     group_by(id) %>%
     mutate(
+        x_lag = lag(x),
+        y_lag = lag(y),
         w_mean_x = mean(x),
         w_mean_y = mean(y),
         wx = x - w_mean_x,
