@@ -364,9 +364,16 @@ options(brms.backend = &quot;cmdstanr&quot;)
 
 ## helper
 #&#39; Compare regression coefs from brms and lavaan model
-compare_models &lt;- function(fit_brms, fit_lavaan) {
-    coefs_brms &lt;- fixef(fit_brms)[5:12, ]
-    coefs_lavaan &lt;- coef(fit_lavaan)[1:8]
+compare_models &lt;- function(fit_brms, fit_lavaan, constrained = FALSE) {
+    if(constrained) {
+        index_brms &lt;- 3:6
+        index_lavaan &lt;- c(&quot;d&quot;, &quot;c&quot;, &quot;a&quot;, &quot;b&quot;)
+    } else {
+        index_brms &lt;- 5:12
+        index_lavaan &lt;- 1:8
+    }
+    coefs_brms &lt;- fixef(fit_brms)[index_brms, ]
+    coefs_lavaan &lt;- coef(fit_lavaan)[index_lavaan]
 
     data.frame(
         brms_terms = rownames(coefs_brms), 
@@ -574,111 +581,9 @@ compare_models(fit_brms_wide, fit_CLPM)</code></pre>
 <p>Coefs are identical.</p>
 <div id="long-format" class="section level2">
 <h2>Long format?</h2>
-<p>Can we get similar answers from a model in long format?</p>
-<pre class="r"><code>d_long &lt;- pivot_longer(
-    d,
-    -id,
-    names_to = c(&quot;.value&quot;, &quot;time&quot;),
-    names_pattern = c(&quot;(.)(.)&quot;)
-)
-d_long &lt;- mutate(
-    d_long,
-    x_lag = lag(x),
-    y_lag = lag(y)
-) %&gt;%
-    group_by(id) %&gt;%
-    mutate(
-        w_mean_x = mean(x),
-        w_mean_y = mean(y),
-        wx = x - w_mean_x,
-        wy = y - w_mean_y,
-        wx_lag = lag(wx),
-        wy_lag = lag(wy)
-    ) %&gt;%
-    ungroup
-head(d_long)</code></pre>
-<pre><code>## # A tibble: 6 x 12
-##      id time        x     y   x_lag y_lag w_mean_x w_mean_y     wx      wy wx_lag  wy_lag
-##   &lt;int&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
-## 1     1 1      1.28    5.05 NA      NA       0.823     5.22  0.459 -0.164  NA     NA     
-## 2     1 2      1.22    4.38  1.28    5.05    0.823     5.22  0.401 -0.840   0.459 -0.164 
-## 3     1 3     -0.0377  6.22  1.22    4.38    0.823     5.22 -0.861  1.00    0.401 -0.840 
-## 4     2 1      1.01    2.49 -0.0377  6.22   -0.254     2.85  1.26  -0.360  NA     NA     
-## 5     2 2     -1.64    2.94  1.01    2.49   -0.254     2.85 -1.38   0.0929  1.26  -0.360 
-## 6     2 3     -0.134   3.11 -1.64    2.94   -0.254     2.85  0.120  0.267  -1.38   0.0929</code></pre>
-<p>Uncentered</p>
-<pre class="r"><code>fy &lt;- bf(y ~ y_lag + x_lag)
-fx &lt;- bf(x ~ x_lag + y_lag)
-fit_brms_long &lt;- brm(
-    fy + fx + set_rescor(FALSE),
-    data = d_long,
-    file = &quot;Models/RI-CLPM/fits/CLPM-brms-long&quot;
-)
-summary(fit_brms_long)</code></pre>
-<pre><code>##  Family: MV(gaussian, gaussian) 
-##   Links: mu = identity; sigma = identity
-##          mu = identity; sigma = identity 
-## Formula: y ~ y_lag + x_lag 
-##          x ~ x_lag + y_lag 
-##    Data: d_long (Number of observations: 14999) 
-## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
-##          total post-warmup samples = 4000
-## 
-## Population-Level Effects: 
-##             Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## y_Intercept     2.93      0.03     2.87     2.99 1.00     4181     3349
-## x_Intercept     1.01      0.03     0.95     1.08 1.00     4552     3550
-## y_y_lag         0.11      0.01     0.09     0.12 1.00     3618     3110
-## y_x_lag         0.32      0.01     0.31     0.34 1.00     3998     3060
-## x_x_lag         0.32      0.01     0.30     0.34 1.00     3580     2818
-## x_y_lag         0.09      0.01     0.06     0.11 1.00     3381     3167
-## 
-## Family Specific Parameters: 
-##         Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sigma_y     1.44      0.01     1.42     1.45 1.00     6321     2783
-## sigma_x     1.52      0.01     1.50     1.53 1.00     7154     2980
-## 
-## Samples were drawn using sample(hmc). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<p>Centered</p>
-<pre class="r"><code>fy &lt;- bf(wy ~ wy_lag + wx_lag)
-fx &lt;- bf(wx ~ wx_lag + wy_lag)
-fit_brms_long_centered &lt;- brm(
-    fy + fx + set_rescor(FALSE),
-    data = d_long,
-    file = &quot;Models/RI-CLPM/fits/CLPM-brms-long-centered&quot;
-)
-summary(fit_brms_long_centered)</code></pre>
-<pre><code>##  Family: MV(gaussian, gaussian) 
-##   Links: mu = identity; sigma = identity
-##          mu = identity; sigma = identity 
-## Formula: wy ~ wy_lag + wx_lag 
-##          wx ~ wx_lag + wy_lag 
-##    Data: d_long (Number of observations: 10000) 
-## Samples: 4 chains, each with iter = 2000; warmup = 1000; thin = 1;
-##          total post-warmup samples = 4000
-## 
-## Population-Level Effects: 
-##              Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## wy_Intercept     0.00      0.01    -0.02     0.02 1.00     6881     3018
-## wx_Intercept    -0.00      0.01    -0.02     0.02 1.00     6627     2862
-## wy_wy_lag       -0.52      0.01    -0.54    -0.50 1.00     6715     3127
-## wy_wx_lag        0.28      0.01     0.26     0.30 1.00     5878     3221
-## wx_wx_lag       -0.43      0.01    -0.45    -0.41 1.00     5741     3545
-## wx_wy_lag        0.01      0.01    -0.01     0.03 1.00     5771     3269
-## 
-## Family Specific Parameters: 
-##          Estimate Est.Error l-95% CI u-95% CI Rhat Bulk_ESS Tail_ESS
-## sigma_wy     0.89      0.01     0.88     0.90 1.00     7451     2858
-## sigma_wx     0.85      0.01     0.84     0.86 1.00     6522     3134
-## 
-## Samples were drawn using sample(hmc). For each parameter, Bulk_ESS
-## and Tail_ESS are effective sample size measures, and Rhat is the potential
-## scale reduction factor on split chains (at convergence, Rhat = 1).</code></pre>
-<p>Should the long brms models be similar to the constrained CLPM in lavaan?</p>
+<p>Can we get similar answers from a model in long format? I guess results should be similar to constrained CLPM in lavaan?</p>
 <pre class="r"><code>CLPM_constrained &lt;- &#39;
-  # Estimate the lagged effects between the observed variables.
+  # Estimate the (constrained) lagged effects between the observed variables.
   x2 ~ a*x1 + b*y1 
   y2 ~ c*x1 + d*y1
   x3 ~ a*x2 + b*y2
@@ -754,7 +659,171 @@ summary(fit_CLPM_constrained, standardized = FALSE)</code></pre>
 ##    .y2                1.830    0.037   50.000    0.000
 ##    .x3                1.781    0.036   50.000    0.000
 ##    .y3                2.114    0.042   50.000    0.000</code></pre>
-<p>Results in long format seems off? Or just difficult to compare?</p>
+<pre class="r"><code>d_long &lt;- pivot_longer(
+    d,
+    -id,
+    names_to = c(&quot;.value&quot;, &quot;time&quot;),
+    names_pattern = c(&quot;(.)(.)&quot;)
+)
+d_long &lt;- 
+    d_long %&gt;% 
+    group_by(id) %&gt;%
+    mutate(
+        x_lag = lag(x),
+        y_lag = lag(y),
+        w_mean_x = mean(x),
+        w_mean_y = mean(y),
+        wx = x - w_mean_x,
+        wy = y - w_mean_y,
+        wx_lag = lag(wx),
+        wy_lag = lag(wy)
+    ) %&gt;%
+    ungroup
+head(d_long)</code></pre>
+<pre><code>## # A tibble: 6 x 12
+##      id time        x     y x_lag y_lag w_mean_x w_mean_y     wx      wy wx_lag  wy_lag
+##   &lt;int&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;
+## 1     1 1      1.28    5.05 NA    NA       0.823     5.22  0.459 -0.164  NA     NA     
+## 2     1 2      1.22    4.38  1.28  5.05    0.823     5.22  0.401 -0.840   0.459 -0.164 
+## 3     1 3     -0.0377  6.22  1.22  4.38    0.823     5.22 -0.861  1.00    0.401 -0.840 
+## 4     2 1      1.01    2.49 NA    NA      -0.254     2.85  1.26  -0.360  NA     NA     
+## 5     2 2     -1.64    2.94  1.01  2.49   -0.254     2.85 -1.38   0.0929  1.26  -0.360 
+## 6     2 3     -0.134   3.11 -1.64  2.94   -0.254     2.85  0.120  0.267  -1.38   0.0929</code></pre>
+<p>Uncentered</p>
+<pre class="r"><code>fy &lt;- bf(y ~ y_lag + x_lag)
+fx &lt;- bf(x ~ x_lag + y_lag)
+fit_brms_long &lt;- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = &quot;Models/RI-CLPM/fits/CLPM-brms-long&quot;
+)
+compare_models(fit_brms_long, fit_CLPM_constrained, constrained = TRUE)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">brms_terms</th>
+<th align="left">lavaan_terms</th>
+<th align="right">brms_estimate</th>
+<th align="right">lavaan_estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">y_y_lag</td>
+<td align="left">d</td>
+<td align="right">0.39</td>
+<td align="right">0.44</td>
+</tr>
+<tr class="even">
+<td align="left">y_x_lag</td>
+<td align="left">c</td>
+<td align="right">0.49</td>
+<td align="right">0.45</td>
+</tr>
+<tr class="odd">
+<td align="left">x_x_lag</td>
+<td align="left">a</td>
+<td align="right">0.49</td>
+<td align="right">0.46</td>
+</tr>
+<tr class="even">
+<td align="left">x_y_lag</td>
+<td align="left">b</td>
+<td align="right">0.34</td>
+<td align="right">0.37</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>fy &lt;- bf(y ~ y_lag + x_lag + (1 | c | id))
+fx &lt;- bf(x ~ x_lag + y_lag + (1 | c | id))
+fit_brms_long_RE &lt;- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = &quot;Models/RI-CLPM/fits/CLPM-brms-long-RE&quot;
+)
+compare_models(fit_brms_long_RE, fit_CLPM_constrained, constrained = TRUE)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">brms_terms</th>
+<th align="left">lavaan_terms</th>
+<th align="right">brms_estimate</th>
+<th align="right">lavaan_estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">y_y_lag</td>
+<td align="left">d</td>
+<td align="right">0.21</td>
+<td align="right">0.44</td>
+</tr>
+<tr class="even">
+<td align="left">y_x_lag</td>
+<td align="left">c</td>
+<td align="right">0.17</td>
+<td align="right">0.45</td>
+</tr>
+<tr class="odd">
+<td align="left">x_x_lag</td>
+<td align="left">a</td>
+<td align="right">0.08</td>
+<td align="right">0.46</td>
+</tr>
+<tr class="even">
+<td align="left">x_y_lag</td>
+<td align="left">b</td>
+<td align="right">0.10</td>
+<td align="right">0.37</td>
+</tr>
+</tbody>
+</table>
+<p>Centered</p>
+<pre class="r"><code>fy &lt;- bf(wy ~ wy_lag + wx_lag)
+fx &lt;- bf(wx ~ wx_lag + wy_lag)
+fit_brms_long_centered &lt;- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = &quot;Models/RI-CLPM/fits/CLPM-brms-long-centered&quot;
+)
+compare_models(fit_brms_long_centered, fit_CLPM_constrained, constrained = TRUE)</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">brms_terms</th>
+<th align="left">lavaan_terms</th>
+<th align="right">brms_estimate</th>
+<th align="right">lavaan_estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">wy_wy_lag</td>
+<td align="left">d</td>
+<td align="right">-0.52</td>
+<td align="right">0.44</td>
+</tr>
+<tr class="even">
+<td align="left">wy_wx_lag</td>
+<td align="left">c</td>
+<td align="right">0.28</td>
+<td align="right">0.45</td>
+</tr>
+<tr class="odd">
+<td align="left">wx_wx_lag</td>
+<td align="left">a</td>
+<td align="right">-0.43</td>
+<td align="right">0.46</td>
+</tr>
+<tr class="even">
+<td align="left">wx_wy_lag</td>
+<td align="left">b</td>
+<td align="right">0.01</td>
+<td align="right">0.37</td>
+</tr>
+</tbody>
+</table>
+<p>I’d say that the uncentered cross-lagged model (<code>fit_brms_long</code>), without any random effects, is close enough?</p>
 </div>
 
 

@@ -126,7 +126,7 @@ fit_RICLPM <- lavaan(
 ```
 
 
-I don't brms can handle the RICLPM data, but let's try. We can manually center the variables within subjects, however, this shouldn't work ("dynamic panel bias")...
+I don't there's an obvous way for brms to handle RICLPM? But let's try anyway. We can manually center the variables within subjects, however, this shouldn't work ("dynamic panel bias")...
 
 ```{r}
 dw <- d %>%
@@ -196,4 +196,126 @@ compare_models(fit_brms_wide_RE, fit_RICLPM)
 ```
 
 # Long format?
-Not sure it'd solve the problem... Couldn't even get CLPM to work.
+Should be similar to constrained lavaan RICLPM? 
+```{r}
+riclpm2 <- '
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained).
+  wx2 ~ a*wx1 + b*wy1 
+  wy2 ~ c*wx1 + d*wy1
+  wx3 ~ a*wx2 + b*wy2
+  wy3 ~ c*wx2 + d*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+'
+fit_RICLPM2 <- lavaan(
+    riclpm2, 
+    data = d, 
+    meanstructure = TRUE, 
+    int.ov.free = TRUE
+)
+```
+
+
+```{r}
+d_long <- pivot_longer(
+    d,
+    -id,
+    names_to = c(".value", "time"),
+    names_pattern = c("(.)(.)")
+)
+d_long <- 
+    d_long %>% 
+    group_by(id) %>%
+    mutate(
+        x_lag = lag(x),
+        y_lag = lag(y),
+        w_mean_x = mean(x),
+        w_mean_y = mean(y),
+        wx = x - w_mean_x,
+        wy = y - w_mean_y,
+        wx_lag = lag(wx),
+        wy_lag = lag(wy)
+    ) %>%
+    ungroup
+head(d_long)
+```
+
+Uncentered
+```{r}
+fy <- bf(y ~ y_lag + x_lag)
+fx <- bf(x ~ x_lag + y_lag)
+fit_brms_long <- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = "Models/RI-CLPM/fits/RICLPM-brms-long"
+)
+compare_models(fit_brms_long, fit_RICLPM2, constrained = TRUE)
+```
+
+```{r}
+fy <- bf(y ~ y_lag + x_lag + (1 | c | id))
+fx <- bf(x ~ x_lag + y_lag + (1 | c | id))
+fit_brms_long_RE <- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = "Models/RI-CLPM/fits/RICLPM-brms-long-RE"
+)
+compare_models(fit_brms_long_RE, fit_RICLPM2, constrained = TRUE)
+```
+
+```{r}
+fy <- bf(wy ~ wy_lag + wx_lag)
+fx <- bf(wx ~ wx_lag + wy_lag)
+fit_brms_long_centered <- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = "Models/RI-CLPM/fits/RICLPM-brms-long-centered"
+)
+compare_models(fit_brms_long_centered, fit_RICLPM2, constrained = TRUE)
+```
+
+```{r}
+fy <- bf(wy ~ wy_lag + wx_lag + (1 | c | id))
+fx <- bf(wx ~ wx_lag + wy_lag + (1 | c | id))
+fit_brms_long_centered_RE <- brm(
+    fy + fx + set_rescor(FALSE),
+    data = d_long,
+    file = "Models/RI-CLPM/fits/RICLPM-brms-long-centered-RE"
+)
+compare_models(fit_brms_long_centered_RE, fit_RICLPM2, constrained = TRUE)
+```
+
+# Notes
+So far, none of the brms models are close to the RI-CLPM.
