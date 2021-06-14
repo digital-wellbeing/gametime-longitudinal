@@ -8,8 +8,8 @@ Wrote a function to simulate a 3-wave RI-CLPM: `simulate-RICLPM-data.R`
 - [x] Fit CLPM and RICLPM with lavaan
 - [x] Simulate DGP for CLPM: `CLPM-lavaan-simulation.Rmd` 
 - [x] Simulate DGP for RICLPM: `RICLPM-lavaan-simulation.Rmd`
-- [] Recover CLPM using brms/multilevel model instead: `CLPM-brms.Rmd` 
-- [] Recover RICLPM using brms/multilevel model instead: `RICLPM-brms-simulation.Rmd`
+- [ ] Recover CLPM using brms/multilevel model instead: `CLPM-brms.Rmd` 
+- [ ] Recover RICLPM using brms/multilevel model instead: `RICLPM-brms-simulation.Rmd`
 
 Rendered documents are in `html/` 
 
