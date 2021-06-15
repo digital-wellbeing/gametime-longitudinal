@@ -19,6 +19,13 @@ rmarkdown::render(
      encoding = "UTF-8"
 )
 
+# RICLPM vs OLS adjusted ----
+rmarkdown::render(
+     "Models/RI-CLPM/RICLPM-vs-DAG.Rmd",
+     output_dir = OUTPUT_DIR,
+     encoding = "UTF-8"
+)
+
 ## WIP: brms, multilevel version ----
 rmarkdown::render(
      "Models/RI-CLPM/CLPM-brms-simulation.Rmd",

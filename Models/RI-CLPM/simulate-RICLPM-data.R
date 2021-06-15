@@ -89,5 +89,5 @@ sim_RICLPM_data <- function(
     y2 <- wy2 + y_mean + U_y
     y3 <- wy3 + y_mean + U_y
 
-    data.frame(x1, x2, x3, y1, y2, y3)
+    data.frame(x1, x2, x3, y1, y2, y3, U_x, U_y)
 }
