@@ -1,6 +1,6 @@
 
 #' Simulate 3-wave RI-CLPM data
-#' 
+#'
 #' @param n number of participants
 #'
 #' @return a data.frame with the observed variables:
@@ -28,7 +28,9 @@ sim_RICLPM_data <- function(
     cor_wx3_wy3,
     sd_x_RE, # random intercepts
     sd_y_RE,
-    cor_xy_intercepts
+    cor_xy_intercepts,
+    p_resp = 1,
+    ... # Sink other arguments
 ) {
     # covariances
     # Time = 1
@@ -89,5 +91,23 @@ sim_RICLPM_data <- function(
     y2 <- wy2 + y_mean + U_y
     y3 <- wy3 + y_mean + U_y
 
-    data.frame(x1, x2, x3, y1, y2, y3, U_x, U_y)
+    out <- data.frame(x1, x2, x3, y1, y2, y3, U_x, U_y)
+
+    # Simulate non-cumulative random missingness for waves 2 and 3
+    # i.e. people can not respond at w2 but still return to w3
+    out <- out %>%
+        mutate(
+            across(
+                c(x2, y2),
+                function(x) ifelse(rbinom(length(x), 1, p_resp), x, NA)
+            )
+        ) %>%
+        mutate(
+            across(
+                c(x3, y3),
+                function(x) ifelse(rbinom(length(x), 1, p_resp), x, NA)
+            )
+        )
+
+    return(out)
 }
