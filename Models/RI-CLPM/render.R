@@ -37,3 +37,10 @@ rmarkdown::render(
      output_dir = OUTPUT_DIR,
      encoding = "UTF-8"
 )
+
+## time-varying confounding
+rmarkdown::render(
+     "Models/RI-CLPM/RICLPM-time-varying-confounding.Rmd",
+     output_dir = OUTPUT_DIR,
+     encoding = "UTF-8"
+)
