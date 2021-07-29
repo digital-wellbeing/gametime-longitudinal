@@ -1,0 +1,1012 @@
+---
+title: "Longitudinal gameplay and well-being"
+author:
+  - name: <a href="https://vuorre.netlify.app">Matti Vuorre</a>
+    affiliation: <a href="https://www.oii.ox.ac.uk/people/matti-vuorre/">University of Oxford</a>
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    theme: yeti
+    highlight: kate
+    self_contained: true
+    number_sections: false
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r packages, include = FALSE}
+# So many packages to load
+library(knitr)
+library(scales)
+library(janitor)
+library(ggbeeswarm)
+library(gtsummary)
+# library(kableExtra)
+library(bayestestR)
+library(brms)
+library(broom)
+library(broom.mixed)
+library(tidybayes)
+library(here)
+library(lubridate)
+library(naniar)
+library(ggtext)
+# library(summarytools)
+library(afex)
+library(emmeans)
+library(ggstance)
+library(ggdist)
+library(patchwork)
+library(readxl)
+library(lavaan)
+library(tidyverse)
+```
+
+```{r setup, include=FALSE}
+# Knitr options
+opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  error = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.retina = 2
+)
+# Plotting theme
+Font <- "Titillium Web"
+theme_set(
+  theme_linedraw(base_family = Font, base_size = 12) +
+    theme(
+      panel.grid.minor = element_blank(), 
+      panel.grid.major.x = element_blank()
+    )
+)
+# MCMC settings
+options(mc.cores = parallel::detectCores(logical = FALSE))
+if (require("cmdstanr")) options(brms.backend = "cmdstanr")
+
+# Run this to delete fitted models and refit
+# unlink(list.files(pattern = "brm-.*\\.rds"))
+```
+
+# Data cleaning
+
+## Survey
+
+We first cleaned the raw qualtrics data of sensitive data and place the resulting table in `Data/qualtrics.csv`. We proceed now to clean that file.
+
+- We only include people at each wave if they answered at least one question in that wave
+
+```{r}
+d <- read_csv(here("Data", "qualtrics.csv"))
+
+# Rename block & item order variables for easier processing
+d <- d %>% 
+  rename(
+    .spane = spane_DO, 
+    .pens = pens_needs_DO,
+    .blocks1 = FL_20_DO,
+    .blocks2 = FL_22_DO
+  )
+
+# Take out rows where no survey questions answered
+# this defines what is a "participant"
+d$responses <- apply(
+  select(d, starts_with("spane_"), starts_with("pens_"), csas), 1, 
+  function(x) sum(!is.na(x))
+)
+d <- d %>% 
+  filter(responses > 0) %>% 
+  select(-responses)
+
+# Has played?
+d <- d %>%
+  mutate(played = !str_detect(played, "NOT"))
+tabyl(d, played)
+
+# Estimated time played
+d <- d %>%
+  mutate(minutes = minutes / 60) %>% 
+  mutate(hours_est = rowSums(select(., hours, minutes), na.rm = TRUE)) %>% 
+  # sum above returns 0 if both hours and minutes are NA, fix here:
+  mutate(hours_est = ifelse(is.na(hours) & is.na(minutes), NA, hours_est)) %>% 
+  select(-minutes, -hours)
+
+# Scale responses
+d <- d %>% 
+  mutate(
+    across(
+      starts_with("spane_"), 
+      function(x) factor(x, levels = c("Very rarely or never", "Rarely", "Occasionally", "Sometimes", "Frequently", "Often", "Very often or always"))
+    )
+  )
+d <- d %>% 
+  mutate(
+    across(
+      starts_with("pens_"),
+      function(x) factor(x, levels = c("Strongly disagree", "Disagree", "Somewhat disagree", "Neither agree nor disagree", "Somewhat agree", "Agree", "Strongly agree"))
+    )
+  )
+d <- mutate(d, across(c(starts_with("spane_"), starts_with("pens_")), as.numeric))
+
+# Reverse scored items
+reverse_items <- c("pens_needs_9", "pens_motivations_2", "pens_motivations_3")
+d <- d %>% 
+  mutate(
+    across(all_of(reverse_items), ~8-.x)
+  )
+
+# Subscale items
+spane_pos_items <- paste0("spane_", c(1,3,5,7,10,12))
+spane_neg_items <- paste0("spane_", c(2,4,6,8,9,11))
+autonomy_items <- paste0("pens_needs_", 1:3)
+competence_items <- paste0("pens_needs_", 4:6)
+relatedness_items <- paste0("pens_needs_", 7:9)
+enjoyment_items <- paste0("pens_motivations_", 1:4)
+extrinsic_items <- paste0("pens_motivations_", 5:8)
+d <- d %>% 
+  mutate(
+    spane_pos = rowMeans(select(., all_of(spane_pos_items)), na.rm = TRUE),
+    spane_neg = rowMeans(select(., all_of(spane_neg_items)), na.rm = TRUE),
+    spane = spane_pos - spane_neg,
+    autonomy = rowMeans(select(., all_of(autonomy_items)), na.rm = TRUE),
+    competence = rowMeans(select(., all_of(competence_items)), na.rm = TRUE),
+    relatedness = rowMeans(select(., all_of(relatedness_items)), na.rm = TRUE),
+    enjoyment = rowMeans(select(., all_of(enjoyment_items)), na.rm = TRUE),
+    extrinsic = rowMeans(select(., all_of(extrinsic_items)), na.rm = TRUE),
+  ) 
+
+# Make wave a nicely labelled factor
+d <- d %>% 
+  mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
+
+# Truncate long names
+d <- d %>% 
+  mutate(game = ifelse(game=="Animal Crossing: New Horizons", "AC:NH", game))
+
+# Gender as factor
+d <- d %>% 
+  mutate(gender = factor(gender))
+
+# Calculate interval between waves
+survey_intervals <- d %>% 
+  select(game, pid, wid, StartDate) %>%
+  arrange(pid, wid) %>% 
+  # Make sure that there is a row for each subject X wave so interval is calculated correctly
+  complete(wid, nesting(pid, game)) %>% 
+  arrange(pid, wid) %>% 
+  group_by(pid) %>% 
+  # Interval between waves in days
+  mutate(
+    interval = (as.numeric(StartDate) - as.numeric(lag(StartDate))) / 60 / 60 / 24
+  ) %>% 
+  ungroup() %>% 
+  select(wid, pid, game, interval)
+d <- left_join(d, survey_intervals)
+
+# Make names pretty for tables/figures
+d <- d %>%
+  rename_with(
+    str_to_upper,
+    c(starts_with("spane"), csas)
+  ) %>% 
+  rename_with(
+    str_to_title,
+    c(age, gender, experience, game, company, autonomy:interval)
+  )
+
+# Get data on invite dates and Ns
+invites <- read_csv(
+  here("Data", "invites.csv"),
+  col_types = list(date = col_date())
+)
+
+# Remove IDs before invite (tests)
+d <- d %>%
+  left_join(select(invites, Game, date)) %>%
+  filter(StartDate >= date) %>%
+  select(-date)
+```
+
+## Telemetry
+
+### EA
+
+This data is at the player by match level: Each row indicates the start and end time of a match for that particular player.
+
+todo I think this allows for a telemetry observation to count for two surveys if their interval was shorter than 14 days but that is okay because survey asked for prior two weeks
+
+```{r}
+telemetry_ea <- read_csv(here("Data", "telemetry_ea.csv"))
+# Select relevant variables
+telemetry_ea <- telemetry_ea %>% 
+  select(
+    pid, game_start_time_utc, game_end_time_utc
+  ) %>% 
+  transmute(
+    pid,
+    game_start = as_datetime(mdy_hm(game_start_time_utc), tz = "UTC"),
+    game_end = as_datetime(mdy_hm(game_end_time_utc), tz = "UTC")
+  )
+
+# Include only matches that happened in the two weeks prior to each survey
+telemetry_ea <- telemetry_ea %>% 
+  left_join(
+    d %>% 
+      filter(Game == "Apex Legends") %>% 
+      select(pid, wid, StartDate)
+  ) %>% 
+  # Is in window if match started or ended in the fourteen days prior to survey
+  filter(
+    game_start %within% interval(StartDate - days(14), StartDate) |
+      game_end %within% interval(StartDate - days(14), StartDate)
+  )
+
+
+# Calculate durations
+telemetry_ea <- telemetry_ea %>% 
+  mutate(Hours = as.numeric(game_end - game_start)/60/60)
+
+# Summarise per wave
+telemetry_ea <- telemetry_ea %>% 
+  group_by(pid, wid) %>% 
+  summarise(Hours = sum(Hours)) %>% 
+  ungroup()
+
+# Join back to survey data
+d <- left_join(d, telemetry_ea)
+
+# If telemetry was not obtained, participant didn't play and therefore gets 0
+# this is easier to do once all data is in
+d <- d %>%
+  mutate(Hours = ifelse(Game == "Apex Legends" & is.na(Hours), 0, Hours))
+```
+
+### CCP
+
+### Ubisoft
+
+### Square Enix
+
+# Demographics
+
+Before exclusions
+
+```{r}
+d %>% 
+  distinct(pid, Game, Age, Experience, Gender) %>% 
+  select(-pid) %>%
+  tbl_summary(by = Game, missing_text = "Missing") %>% 
+  add_overall()
+```
+
+# Survey descriptives
+
+## Response rate & retention
+
+We calculate response rates and retention with the above assumptions (e.g. a "participant" is someone who answered at least one survey item).
+
+```{r}
+# Create a table where wave 0 are number of invites,
+# then calculate response rate / retention at each wave.
+# This assumes there are no new participants at wave 3 
+# (people who didn't participate in wave 2 showed up at wave 3.)
+bind_rows(select(invites, -date), count(d, Game, wid)) %>% 
+  arrange(Game, wid) %>% 
+  group_by(Game) %>% 
+  mutate(
+    R_rate = percent(n / lag(n), .1),
+    n = comma(n)
+  ) %>% 
+  pivot_wider(names_from = wid, values_from = c(n, R_rate)) %>%
+  mutate(
+    Invites = n_0,
+    `Wave 1` = str_glue("{n_1} ({R_rate_1})"),
+    `Wave 2` = str_glue("{n_2} ({R_rate_2})"),
+    `Wave 3` = str_glue("{n_3} ({R_rate_3})")
+  ) %>% 
+  select(Game, Invites:`Wave 3`) %>% 
+  mutate(across(everything(), ~str_replace(., "NA", "0"))) %>% 
+  kable(caption = "Number of people (response/retention rate) participating at each wave.")
+```
+
+How many participants completed N waves
+
+```{r}
+d %>% 
+  count(Game, pid, name = "Waves") %>%
+  tabyl(Game, Waves) %>% 
+  as_tibble() %>% 
+  rowwise() %>% 
+  mutate(Total = sum(`1`, `2`, `3`)) %>% 
+  ungroup() %>% 
+  mutate(across(`1`:`3`, .fns = list(p = function(x) percent(x/Total, .1)))) %>% 
+  mutate(
+    `1 wave` = str_glue("{`1`} ({`1_p`})"),
+    `2 waves` = str_glue("{`2`} ({`2_p`})"),
+    `3 waves` = str_glue("{`3`} ({`3_p`})")
+  ) %>% 
+  select(Game, Total, `1 wave`:`3 waves`) %>% 
+  kable(caption = "Number of people (percentage) completing 1/2/3 waves per company.")
+d %>% 
+  count(pid, name = "Waves") %>%
+  tabyl(Waves) %>% 
+  adorn_pct_formatting() %>% 
+  as_tibble() %>% 
+  kable(caption = "Number of people (percentage) completing 1/2/3 waves total.")
+```
+
+## Response dates
+
+```{r}
+d %>% 
+  mutate(Date = as_date(StartDate)) %>% 
+  count(Game, Wave, Date) %>% 
+  ggplot(
+    aes(Date, n, fill = Wave)
+  ) +
+  geom_col() +
+  scale_y_continuous(
+    "Responses", 
+    breaks = pretty_breaks(10),
+    expand = expansion(c(0, .1)),
+  ) +
+  scale_x_date(
+    "Date",
+    date_breaks = "7 day", date_labels = "%b %d", date_minor_breaks = "1 day"
+  ) +
+  # geom_text(aes(label = n), nudge_y = 10) +
+  facet_wrap("Game", scales = "free", ncol = 2)
+```
+
+Response times in BST
+
+```{r}
+d %>% 
+  mutate(Hour = hour(StartDate)) %>% 
+  count(Game, Wave, Hour) %>% 
+  ggplot(aes(Hour, y = n, fill = Wave)) +
+  scale_y_continuous(
+    "Responses", 
+    breaks = pretty_breaks(10),
+    expand = expansion(c(0, .1)),
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, 21, by = 3),
+    expand = expansion(c(0.01)),
+    labels = function(x) paste0(x, ":00")
+  ) +
+  geom_col() +
+  facet_wrap("Game", scales = "free", ncol = 2)
+```
+
+
+### Durations between waves
+
+Participants could respond with variable delays due to email schedules and late responding. So we also check the actual intervals between completing waves
+
+```{r}
+d %>% 
+  select(wid, Game, Interval) %>% 
+  group_by(Game, wid) %>% 
+  filter(wid > 1) %>% 
+  summarise(
+    q25 = quantile(Interval, .25, na.rm = TRUE) %>% round(1),
+    median = median(Interval, na.rm = TRUE) %>% round(1), 
+    q75 = quantile(Interval, .75, na.rm = TRUE) %>% round(1),
+    n = n()
+  ) %>% 
+  kable(caption = "Interval durations preceding waves 2 and 3.")
+d %>% 
+  filter(Wave != "Wave 1") %>% 
+  mutate(Wave = fct_drop(Wave)) %>% 
+  ggplot(aes(Interval)) +
+  geom_vline(xintercept = 14, size = .2) +
+  geom_histogram(binwidth = 1, col = "white") +
+  scale_y_continuous(
+    "Count", expand = expansion(c(0, .1))
+  ) +
+  scale_x_continuous(
+    "Days between responding",
+    breaks = seq(0, 28, by = 7)
+  ) +
+  facet_grid(Game~Wave, scales = "free_y")
+```
+
+## How many people had telemetry
+
+For at least one wave
+
+```{r}
+d %>% 
+  mutate(has_telemetry = !is.na(Hours)) %>% 
+  group_by(Game, pid) %>% 
+  summarise(`Has telemetry` = any(has_telemetry)) %>% 
+  select(-pid) %>% 
+  tbl_summary(by = Game)
+```
+
+## Exclusions
+
+As in our previous study we exclude observations more extreme than 6SD
+
+```{r}
+d <- d %>%
+  pivot_longer(c(Hours, hours_est:Extrinsic)) %>% 
+  group_by(Game, name) %>% 
+  mutate(z = as.numeric(scale(value)))
+```
+
+```{r}
+# This is what are taken out
+d %>% 
+  summarise(
+    Extremes = sum(abs(z >=6), na.rm = TRUE),
+    Extremes_p = percent(Extremes/n(), accuracy = .01)
+  ) %>% 
+  filter(Extremes > 0)
+d %>% 
+  group_by(name) %>% 
+  summarise(
+    Extremes = sum(abs(z >=6), na.rm = TRUE),
+    Extremes_p = percent(Extremes/n(), accuracy = .01)
+  ) %>% 
+  filter(Extremes > 0)
+```
+
+```{r}
+d <- d %>%
+  mutate(value = ifelse(abs(z >= 6), NA, value)) %>% 
+  select(-z) %>% 
+  pivot_wider(names_from = "name", values_from = "value") %>% 
+  ungroup()
+```
+
+# Univariate analyses
+
+## Key variables over time
+
+Note that `played` variable is not useful; it was not collected in waves 2 and 3, and sometimes people did estimate to have time played even though reported not playing :/ 
+
+```{r}
+d %>% 
+  mutate(hh = Hours > 40) %>% 
+  tabyl(hh) %>% 
+  adorn_pct_formatting()
+tmp <- d %>% 
+  select(Game, Wave, pid, Hours, CSAS, SPANE) %>% 
+  pivot_longer(Hours:SPANE) %>% 
+  drop_na(value) %>% 
+  filter(value <= 40) %>%
+  mutate(
+    name = factor(name, levels = c("Hours", "SPANE", "CSAS"), labels = c("Hours played", "Affect", "Life satisfaction"))
+  )
+tmp2 <- tmp %>% 
+  group_by(Game, name, Wave) %>% 
+  summarise(mean = mean(value, na.rm = TRUE), se = sd(value, na.rm = TRUE)/sqrt(n()))
+
+tmp %>% 
+  ggplot(aes(Wave, value, fill = Game, col = Game)) +
+  stat_summary(fun.data = mean_cl_boot, fatten = 2) +
+  scale_x_discrete(labels = 1:3) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  geom_blank() +
+  stat_summary(
+    fun = mean, geom = "line", 
+    aes(group = Game), show.legend = FALSE
+  ) +
+  facet_wrap("name", scales = "free_y", ncol = 2) +
+  labs(y = "Mean (95%CI)") +
+  theme(legend.position = c(.55, 0), legend.justification = c(0, 0))
+ggsave(here("Figure-1.png"), width = 5, height = 4)
+```
+
+# Bivariate relations
+
+```{r}
+d %>% 
+  select(CSAS, SPANE, Autonomy:Extrinsic, Hours, hours_est) %>% 
+  psych::cor.plot(
+    scale = FALSE, stars = FALSE, 
+    xlas = 2, show.legend = FALSE,
+    main = "Correlations of main variables"
+  )
+```
+
+# Models
+
+Need some new data shapes for models
+
+```{r}
+# within and between component of predictors
+# !! for now replace missing telemetry with subjective estimate !!
+d_model <- d %>% 
+  ### !! Remove this when data is available !!
+  mutate(Hours = coalesce(Hours, hours_est)) %>% 
+  ### !! !!
+  select(Game, pid, Wave, Hours, SPANE, CSAS) %>% 
+  arrange(Game, pid, Wave) %>%
+  # Grand mean centered hours
+  mutate(Hours_g = Hours - mean(Hours, na.rm = T)) %>% 
+  # Subject-mean Hours_g, and deviations therein
+  group_by(Game, pid) %>% 
+  mutate(
+    Hours_b = mean(Hours_g, na.rm = T),
+    Hours_w = Hours_g - Hours_b
+  ) %>% 
+  ungroup()
+```
+
+## Simple correlation
+
+Pearson's r on total data
+
+```{r}
+d_model %>% 
+  pivot_longer(c(SPANE, CSAS)) %>% 
+  group_by(Game, name) %>% 
+  summarise(tidy(lm(scale(value) ~ scale(Hours), data = cur_data()), conf.int = TRUE)) %>% 
+  filter(term != "(Intercept)") %>% 
+  ggplot(aes(estimate, Game)) +
+  geom_vline(xintercept = 0, lty = 2, size = .25) +
+  scale_x_continuous(
+    "*r* (95%CI)", breaks = pretty_breaks()
+  ) +
+  geom_pointrangeh(
+    aes(xmin = conf.low, xmax = conf.high),
+    position = position_dodge2v(.33)
+  ) +
+  facet_wrap("name", scales = "fixed") +
+  theme(axis.title.x = element_markdown())
+```
+
+# RICLPM
+
+Wrangle data to a format where function can be mapped to outcome pairs
+
+Scales are standardized within game
+
+```{r}
+d_riclpm <- d %>% 
+  ### !! Remove this when data is available !!
+  filter(Game %in% c("Apex Legends", "EVE Online", "The Crew 2")) %>% 
+  mutate(Hours = coalesce(Hours, hours_est)) %>%  
+  # Did this last time
+  mutate(Hours = Hours / 10) %>%
+  select(Game, pid, wid, Hours, SPANE, CSAS) %>% 
+  # Standardize within game
+  group_by(Game) %>% 
+  mutate(across(SPANE:CSAS, ~as.numeric(scale(.)))) %>% 
+  ungroup() %>% 
+  pivot_longer(SPANE:CSAS) %>% 
+  rename(x = Hours, y = value) %>% 
+  # Within person centering
+  group_by(Game, pid) %>% 
+  mutate(x_c = x - mean(x, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = wid, values_from = c(x, x_c, y), names_sep = "")
+```
+
+## Some kind of data figure
+
+```{r}
+d_riclpm %>% 
+  mutate(is_extreme = abs(x1) > 3 | abs(x2) > 3) %>% 
+  tabyl(is_extreme)
+p1 <- d_riclpm %>% 
+  mutate(name = fct_relevel(name, "SPANE")) %>% 
+  ggplot(aes(x_c1*10, y2, col = Game, fill = Game)) +
+  scale_color_brewer(palette = "Dark2", aesthetics = c("color", "fill")) +
+  geom_smooth(
+    method = "lm", size = .4, 
+    alpha = .2, show.legend = FALSE
+  ) +
+  geom_point(size = .2, alpha = .5) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  scale_y_continuous(breaks = pretty_breaks()) +
+  coord_cartesian(xlim = c(-30, 30)) +
+  facet_wrap(
+    "name",
+    labeller = labeller(
+      .cols = c("SPANE" = "Affect", "CSAS" = "Life satisfaction")
+    )
+  ) +
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 2, shape = 16, alpha = 1)
+    )
+  ) +
+  theme(
+    axis.title.x = element_markdown(),
+    axis.title.y = element_markdown()
+  )
+p2 <- p1 + 
+  aes(x_c2*10, y3) +
+  labs(
+    x = "Hours played<sub>[t2]</sub> (within-person centered)",
+    y = "Standardized scale<sub>[t3]</sub>"
+  )
+p1 <- p1 + 
+  labs(
+    x = "Hours played<sub>[t1]</sub> (within-person centered)",
+    y = "Standardized scale<sub>[t2]</sub>"
+  )
+(p1 / p2) + plot_layout(guides = "collect")
+ggsave(here("Figure-2.png"), width = 6, height = 4)
+```
+
+
+## Fit one model to all data
+
+Syntax based on <https://jeroendmulder.github.io/RI-CLPM/lavaan.html>
+
+```{r}
+riclpm_constrained <- '
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained).
+  wx2 ~ bx*wx1 + gx*wy1 
+  wy2 ~ gy*wx1 + by*wy1
+  wx3 ~ bx*wx2 + gx*wy2
+  wy3 ~ gy*wx2 + bx*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+'
+```
+
+```{r}
+fit_riclpm <- d_riclpm %>% 
+  group_by(name) %>% 
+  summarise(
+    fit = lavaan(
+      riclpm_constrained, 
+      data = cur_data(),
+      missing = "ml",
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    ) %>% list
+  )
+
+get_lavaan_pars <- function(x) {
+  bind_rows(
+    parameterestimates(x) %>% 
+      mutate(Type = "Unstandardized"), 
+    standardizedsolution(x) %>% 
+      rename(est = est.std) %>% 
+      mutate(Type = "Standardized")
+  ) %>% 
+    as_tibble() %>% 
+    unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE)
+}
+
+pars_riclpm_avg <- fit_riclpm %>% 
+  mutate(pars = map(fit, get_lavaan_pars)) %>% 
+  select(-fit)
+```
+
+## Separate models per game
+
+```{r}
+fit_riclpm <- d_riclpm %>% 
+  group_by(name, Game) %>% 
+  summarise(
+    fit = lavaan(
+      riclpm_constrained, 
+      data = cur_data(),
+      missing = "ml",
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    ) %>% list
+  )
+pars_riclpm_sep <- fit_riclpm %>% 
+  mutate(pars = map(fit, get_lavaan_pars)) %>% 
+  select(-fit)
+```
+
+## Multi-group fit with parameter constraints
+
+```{r}
+riclpm_constrained_multigroup <- '
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained)
+  # such that each group gets their own coefs
+  wx2 ~ c(bx1, bx2, bx3)*wx1 + c(gx1, gx2, gx3)*wy1 
+  wy2 ~ c(gy1, gy2, gy3)*wx1 + c(by1, by2, by3)*wy1
+  wx3 ~ c(bx1, bx2, bx3)*wx2 + c(gx1, gx2, gx3)*wy2
+  wy3 ~ c(gy1, gy2, gy3)*wx2 + c(by1, by2, by3)*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+'
+```
+
+```{r}
+fit_riclpm <- d_riclpm %>% 
+  group_by(name) %>% 
+  summarise(
+    fit = lavaan(
+      riclpm_constrained_multigroup, 
+      data = cur_data(),
+      missing = "ml",
+      group = "Game",
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    ) %>% list
+  )
+
+pars_riclpm_mg <- fit_riclpm %>% 
+  mutate(pars = map(fit, get_lavaan_pars)) %>% 
+  mutate(
+    pars = map2(
+      pars, fit,
+      ~left_join(.x, tibble(group = 1:length(unique(d_riclpm$Game)), Game = .y@Data@group.label)
+      )
+    )
+  ) %>% 
+  select(-fit)
+```
+
+Look at estimates
+
+```{r}
+pars_riclpm <- pars_riclpm_mg %>% 
+  unnest(pars) %>% 
+  group_by(name, Game) %>% 
+  nest() %>% 
+  rename(pars = data) %>% 
+  mutate(Model = "Multigroup") %>% 
+  bind_rows(pars_riclpm_sep %>% mutate(Model = "Independent")) %>% 
+  bind_rows(pars_riclpm_avg %>% mutate(Model = "Average", Game = "Average")) %>% 
+  ungroup() %>% 
+  unnest(pars) %>% 
+  filter(Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")) %>% 
+  mutate(Game = fct_relevel(Game, "Average"))
+pars_riclpm %>%   
+  ggplot(aes(est, Game, col = Model, xmin = ci.lower, xmax = ci.upper, shape = Type)) +
+  geom_vline(xintercept = 0, size = .2, lty = 2) +
+  geom_pointrangeh(position = position_dodge2v(.25), size = .33) +
+  facet_grid(Parameter ~ name)
+```
+
+# Meta analysis
+
+```{r results='hide'}
+d_ma <- pars_riclpm %>% 
+  filter(Model == "Independent" & Type == "Standardized")
+bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+fit_ma_empty <- brm(
+  bf_ma, 
+  data = d_ma, 
+  prior = prior(student_t(7, 0, .5), class = "sd", group  = "Game") +
+    prior(normal(0, 1), class = "b"),
+  chains = 0,
+  control = list(adapt_delta = .999, max_treedepth = 15),
+  file = here("brm-ma-empty")
+)
+fit_ma <- d_ma %>% 
+  group_by(name, Parameter) %>% 
+  summarise(
+    fit = list(
+      update(
+        fit_ma_empty, 
+        newdata = cur_data(), 
+        control = list(adapt_delta = .999, max_treedepth = 15), 
+        iter = 5000,
+        refresh = 0
+      )
+    )
+  )
+
+get_ma_post <- function(x) {
+  coef(x, summary = FALSE) %>%
+    .[["Game"]] %>%
+    .[,,1] %>%
+    as.data.frame() %>% 
+    as_tibble() %>% 
+    cbind(fixef(x, summary = FALSE))
+}
+
+fit_ma_sum <- fit_ma %>% 
+  mutate(out = map(fit, get_ma_post)) %>% 
+  mutate(
+    out2 = map(
+      out, 
+      ~describe_posterior(
+        ., 
+        rope_range = c(-.1, .1), 
+        test = c("ps", "rope"),
+        centrality = "mean"
+      ) %>% 
+        rename(Game = Parameter)
+    )
+  ) %>% 
+  select(-fit, -out) %>% 
+  unnest(out2) %>% 
+  mutate(Game = ifelse(Game=="Intercept", "Average", Game)) %>% 
+  ungroup() %>% 
+  # Labels in order
+  mutate(name = fct_relevel(name, "SPANE")) %>% 
+  mutate(Parameter = fct_relevel(Parameter, "wy2 ~ wx1")) %>% 
+  mutate(
+    across(
+      c(Mean, CI_low, CI_high), 
+      .fns = list(r = ~format(round(., 2), nsmall = 2))
+    )
+  ) %>% 
+  mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]"))
+
+fit_ma %>% 
+  mutate(out = map(fit, get_ma_post)) %>% 
+  select(-fit) %>% 
+  unnest(out) %>% 
+  rename(Average = Intercept) %>% 
+  pivot_longer(`Apex Legends`:Average, names_to = "Game") %>% 
+  ungroup() %>% 
+  # Pretty labels in order
+  mutate(Game = str_replace_all(Game, "\\.", " ")) %>% 
+  mutate(Game = fct_relevel(Game, "Average")) %>% 
+  mutate(name = fct_relevel(name, "SPANE")) %>% 
+  mutate(Parameter = fct_relevel(Parameter, "wy2 ~ wx1")) %>% 
+  ggplot(aes(value, Game)) +
+  coord_cartesian(xlim = c(-.65, .65)) +
+  # geom_vline(xintercept = 0, size = .15, col = "grey60") +
+  geom_vline(xintercept = c(-.1, .1), size = .1, col = "grey60") +
+  scale_x_continuous(
+    "Estimated cross-lagged effect",
+    breaks = pretty_breaks(5),
+    expand = expansion(.01)
+  ) +
+  scale_y_discrete(
+    expand = expansion(c(0, 0.1)),
+    labels = function(x) ifelse(x=="Average", "**Average**", x)
+  ) +
+  scale_alpha_manual(values = c(.33, 1)) +
+  scale_fill_brewer(
+    palette = "Set1", direction = 1, aesthetics = c("fill", "color")
+  ) +
+  scale_size_continuous(range = c(.15, 1.5)) +
+  # Density to hide lines
+  stat_halfeye(
+    fill = "white",
+    height = .5, adjust = 1.5, point_interval = NULL,
+    show.legend = FALSE, normalize = "panels"
+  ) +
+  # Actual densities
+  stat_halfeye(
+    aes(fill = stat(x > 0), alpha = stat(abs(x) > .1)),
+    height = .5, adjust = 1.5, point_interval = NULL,
+    show.legend = FALSE, normalize = "panels"
+  ) +
+  stat_pointinterval(
+    size = .05,
+    .width = c(.95),
+    position = position_nudge(y = 0.0),
+    fatten_point = 2,
+    point_interval = mean_hdi
+  ) +
+  geom_text(
+    data = fit_ma_sum, vjust = -0.5, size = 3, hjust = 1,
+    aes(x = .65, label = Res),
+    family = Font
+  ) +
+  geom_text(
+    data = fit_ma_sum %>% 
+      filter(Game == "Average"), 
+    vjust = 1.4, size = 3,
+    aes(
+      x = sign(Mean)*.11, 
+      hjust = ifelse(sign(Mean)==1, 0, 1),
+      label = str_glue("{percent(ps, 1)}"),
+      col = as.logical(sign(Mean)==1)
+    ),
+    family = Font,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    data = fit_ma_sum %>% 
+      filter(Game == "Average"), 
+    vjust = 1.4, size = 3,
+    aes(
+      x = 0, 
+      hjust = 0.5,
+      label = str_glue("{percent(ROPE_Percentage, 1)}")
+    ),
+    col = "gray50",
+    family = Font,
+    show.legend = FALSE
+  ) +
+  geom_text(
+    data = fit_ma_sum %>% 
+      filter(Game == "Average"), 
+    vjust = 1.4, size = 3,
+    aes(
+      x = -sign(Mean)*.11, 
+      hjust = ifelse(sign(Mean)==1, 1, 0),
+      label = str_glue("{percent(1-(ROPE_Percentage+ps), 1)}"),
+      col = as.logical(-sign(Mean)==1)
+    ),
+    family = Font,
+    show.legend = FALSE
+  ) +
+  theme(axis.title.y = element_blank(), axis.text.y = element_markdown()) +
+  facet_grid(
+    Parameter~name,
+    labeller = labeller(
+      .cols = c("SPANE" = "Affect", "CSAS" = "Life satisfaction"),
+      .rows = c("wx2 ~ wy1" = "Well-being on play", "wy2 ~ wx1" = "Play on well-being")
+    )
+  )
+ggsave(here("Figure-3.png"), width = 8, height = 4)
+
+# Also check out the individual model estimates
+last_plot() +
+  geom_pointrangeh(
+    data = d_ma, col = "gray40", fatten = 2,
+    aes(x = est, xmin = ci.lower, xmax = ci.upper),
+    position = position_nudge(y = -.1)
+  )
+```
