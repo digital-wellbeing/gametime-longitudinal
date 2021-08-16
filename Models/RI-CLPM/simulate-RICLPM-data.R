@@ -1,4 +1,13 @@
 
+
+fixed_or_random <- function(b_mean, b_sd, n) {
+    if(is.null(b_sd)) {
+        return(b_mean)
+    } else {
+        return(rnorm(n, b_mean, b_sd))
+    }
+}
+
 #' Simulate 3-wave RI-CLPM data
 #' 
 #' @param n number of participants
@@ -11,10 +20,14 @@ sim_RICLPM_data <- function(
     beta_2y,
     beta_3x,
     beta_3y,
-    gamma_2x, # gamma = cross-lagged effects
+    gamma_2x, # gamma = (averag) cross-lagged effects
     gamma_2y,
     gamma_3x,
     gamma_3y,
+    gamma_2x_sd = NULL, # cross-lagged Random Effects
+    gamma_2y_sd = NULL,
+    gamma_3x_sd = NULL,
+    gamma_3y_sd = NULL,
     x_mean,
     y_mean,
     sd_wx1, # covariances
@@ -28,7 +41,8 @@ sim_RICLPM_data <- function(
     cor_wx3_wy3,
     sd_x_RE, # random intercepts
     sd_y_RE,
-    cor_xy_intercepts
+    cor_xy_intercepts,
+    keep_cross_effects = FALSE
 ) {
     # covariances
     # Time = 1
@@ -76,6 +90,12 @@ sim_RICLPM_data <- function(
     wx1 <- e1[, 1]
     wy1 <- e1[, 2]
 
+    gamma_2x <- fixed_or_random(gamma_2x, gamma_2x_sd, n)
+    gamma_2y <- fixed_or_random(gamma_2y, gamma_2y_sd, n)
+    gamma_3x <- fixed_or_random(gamma_3x, gamma_3x_sd, n)
+    gamma_3y <- fixed_or_random(gamma_3y, gamma_3y_sd, n)
+    ## Assume constant RE effect over time for now
+    if(!is.null(gamma_3y_sd)) gamma_3y <- gamma_2y
     wx2 <- beta_2x * wx1 + gamma_2x * wy1 + e2[, 1]
     wy2 <- beta_2y * wy1 + gamma_2y * wx1 + e2[, 2]
     wx3 <- beta_3x * wx2 + gamma_3x * wy2 + e3[, 1]
@@ -89,5 +109,12 @@ sim_RICLPM_data <- function(
     y2 <- wy2 + y_mean + U_y
     y3 <- wy3 + y_mean + U_y
 
-    data.frame(x1, x2, x3, y1, y2, y3, U_x, U_y)
+    out <- data.frame(x1, x2, x3, y1, y2, y3, U_x, U_y)
+    if(keep_cross_effects == TRUE) {
+        out <- cbind(
+            out,
+            data.frame(gamma_2x, gamma_2y, gamma_3x, gamma_3y)
+            )
+    }
+    out
 }

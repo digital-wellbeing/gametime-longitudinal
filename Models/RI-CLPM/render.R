@@ -44,3 +44,10 @@ rmarkdown::render(
      output_dir = OUTPUT_DIR,
      encoding = "UTF-8"
 )
+
+## Selection bias
+rmarkdown::render(
+     "Models/RI-CLPM/RICLPM-selection-bias.Rmd",
+     output_dir = OUTPUT_DIR,
+     encoding = "UTF-8"
+)
