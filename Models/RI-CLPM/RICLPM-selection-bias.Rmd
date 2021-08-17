@@ -168,7 +168,7 @@ Estimates are correct.
 ## Add selection Bias
 In the whole population there is on average a negative effect of time spent gaming on well-being. For simplicity, I'm just selecting directly on the $\text{game time}_{t - i} \rightarrow \text{well-being}_t$ effect here. So that individuals where the effect is weaker or positive are more likely to join the study. Any indirect selection process would probably be weaker.
 
-I've set the response rate to 3%, and use a logistic function to conver $\text{game time}_{t - i} \rightarrow \text{well-being}_t$ into individual probabilities of joining the study.
+I've set the response rate to 3%, and use a logistic function to convert $\text{game time}_{t - i} \rightarrow \text{well-being}_t$ into individual probabilities of joining the study.
 
 ```{r}
 # marginal response rate
