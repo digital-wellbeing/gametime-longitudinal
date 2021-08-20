@@ -628,7 +628,7 @@ d_model %>%
   ggplot(aes(estimate, Game, col = Wave)) +
   geom_vline(xintercept = 0, lty = 2, size = .25) +
   scale_x_continuous(
-    "Estimated effect (95%CI) of 10 hours played",
+    "Bivariate regression coefficient (95%CI)",
     breaks = pretty_breaks()
   ) +
   geom_pointrangeh(
@@ -891,10 +891,10 @@ riclpm_constrained_multigroup <- "
 
   # Estimate the lagged effects between the within-person centered variables (constrained)
   # such that each group gets their own coefs
-  wx2 ~ c(bx1, bx2, bx3)*wx1 + c(gx1, gx2, gx3)*wy1
-  wy2 ~ c(gy1, gy2, gy3)*wx1 + c(by1, by2, by3)*wy1
-  wx3 ~ c(bx1, bx2, bx3)*wx2 + c(gx1, gx2, gx3)*wy2
-  wy3 ~ c(gy1, gy2, gy3)*wx2 + c(by1, by2, by3)*wy2
+  wx2 ~ c(bx1, bx2, bx3, bx4, bx5)*wx1 + c(gx1, gx2, gx3, gx4, gx5)*wy1
+  wy2 ~ c(gy1, gy2, gy3, gy4, gy5)*wx1 + c(by1, by2, by3, by4, by5)*wy1
+  wx3 ~ c(bx1, bx2, bx3, bx4, bx5)*wx2 + c(gx1, gx2, gx3, gx4, gx5)*wy2
+  wy3 ~ c(gy1, gy2, gy3, gy4, gy5)*wx2 + c(by1, by2, by3, by4, by5)*wy2
 
   # Estimate the covariance between the within-person centered
   # variables at the first wave.
@@ -979,10 +979,10 @@ bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
 fit_ma_empty <- brm(
   bf_ma,
   data = d_ma,
-  prior = prior(student_t(7, 0, .5), class = "sd", group = "Game") +
-    prior(normal(0, 1), class = "b"),
+  prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
+    prior(normal(0, 0.5), class = "b"),
   chains = 0,
-  control = list(adapt_delta = .999, max_treedepth = 15),
+  control = list(adapt_delta = .9999, max_treedepth = 15),
   file = here("brm-ma-empty")
 )
 
@@ -994,8 +994,8 @@ fit_ma <- d_ma %>%
       update(
         fit_ma_empty,
         newdata = cur_data(),
-        control = list(adapt_delta = .999, max_treedepth = 15),
-        iter = 5000,
+        control = list(adapt_delta = .9999, max_treedepth = 15),
+        iter = 15000, warmup = 5000,
         refresh = 0
       )
     )
@@ -1046,7 +1046,7 @@ p_data <- fit_ma %>%
   select(-fit) %>%
   unnest(out) %>%
   rename(Average = Intercept) %>%
-  pivot_longer(`Apex Legends`:Average, names_to = "Game") %>%
+  pivot_longer(-c(name, Parameter, Type), names_to = "Game") %>%
   mutate(Game = fct_relevel(Game, "Average")) %>%
   ungroup() %>%
   left_join(Order)
@@ -1187,17 +1187,20 @@ forest_plot <- function(type = "Unstandardized") {
     facet_wrap("Panel_label", scales = "free_x", labeller = label_parsed)
 }
 forest_plot("Unstandardized")
-ggsave(here("Figure-3-Unstandardized.png"), width = 8, height = 4.6)
+ggsave(here("Figure-3-Unstandardized.png"), width = 8, height = 5)
 forest_plot("Standardized")
-ggsave(here("Figure-3-Standardized.png"), width = 8, height = 4.6)
+ggsave(here("Figure-3-Standardized.png"), width = 8, height = 5)
 ```
 
 ```{r}
 # Also check out the individual model estimates
-last_plot() +
+forest_plot("Unstandardized") +
   geom_pointrangeh(
-    data = d_ma %>% filter(Type == "Standardized"),
-    col = "gray40", fatten = 2,
+    data = d_ma %>%
+      left_join(Order) %>% 
+      filter(Type == "Unstandardized") %>% 
+      mutate(rope_limit=.1),
+    col = "gray40", fatten = 1.5, size = .5,
     aes(x = est, xmin = ci.lower, xmax = ci.upper),
     position = position_nudge(y = -.1)
   )
