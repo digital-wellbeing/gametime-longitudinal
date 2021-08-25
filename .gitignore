@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Data
+Data/
+
+# Vscode stuff
+.vscode/
