@@ -40,6 +40,11 @@ library(patchwork)
 library(readxl)
 library(lavaan)
 library(tidyverse)
+library(GGally)
+# remotes::install_github("jflournoy/riclpmr")  
+library(riclpmr)
+library(ggnewscale)
+library(showtext)
 ```
 
 ```{r setup, include=FALSE}
