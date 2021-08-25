@@ -43,3 +43,9 @@ Data/
 
 # Vscode stuff
 .vscode/
+
+# Output
+Output/Analysis_files/
+Output/*.html
+Output/Figures/*.png
+Output/brms/*.rds

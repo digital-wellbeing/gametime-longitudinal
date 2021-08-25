@@ -558,7 +558,7 @@ tmp %>%
   labs(y = "Value") +
   guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
   theme(legend.position = "bottom", legend.title = element_blank())
-ggsave(here("Figure-1.png"), width = 5, height = 6)
+ggsave(here("Output/Figures/Figure-1.png"), width = 5, height = 6)
 ```
 
 # Bivariate relations
@@ -731,7 +731,7 @@ p_lagged_scatter <- tmp %>%
   facet_wrap("Panel_label", scales = "free_y", labeller = label_parsed) +
   theme(aspect.ratio = 1)
 p_lagged_scatter
-ggsave(here("Figure-2-raw.png"), width = 5, height = 4)
+ggsave(here("Output/Figures/Figure-2-raw.png"), width = 5, height = 4)
 d_riclpm %>%
   mutate(is_extreme = abs(x1) > 2 | abs(x2) > 2) %>%
   tabyl(is_extreme) %>%
@@ -775,7 +775,7 @@ p1 <- p1 +
     y = "Well-being<sub>[t2]</sub>"
   )
 (p1 / p2) + plot_layout(guides = "collect")
-ggsave(here("Figure-2-centered.png"), width = 5, height = 4)
+ggsave(here("Output/Figures/Figure-2-centered.png"), width = 5, height = 4)
 ```
 
 ## Fit one model to all data
@@ -991,7 +991,7 @@ fit_ma_empty <- brm(
     prior(normal(0, 0.5), class = "b"),
   chains = 0,
   control = list(adapt_delta = .9999, max_treedepth = 15),
-  file = here("brm-ma-empty")
+  file = here("Output/brms/brm-ma-empty")
 )
 
 # Fit meta-analysis separately to each outcome, parameter, and type (standardized vs unstandardized)
@@ -1195,9 +1195,9 @@ forest_plot <- function(type = "Unstandardized") {
     facet_wrap("Panel_label", scales = "free_x", labeller = label_parsed)
 }
 forest_plot("Unstandardized")
-ggsave(here("Figure-3-Unstandardized.png"), width = 8, height = 5)
+ggsave(here("Output/Figures/Figure-3-Unstandardized.png"), width = 8, height = 5)
 forest_plot("Standardized")
-ggsave(here("Figure-3-Standardized.png"), width = 8, height = 5)
+ggsave(here("Output/Figures/Figure-3-Standardized.png"), width = 8, height = 5)
 ```
 
 ```{r}
@@ -1309,7 +1309,7 @@ pair_plot <-
       theme(panel.grid = element_blank())
   }
 pair_plot(select(d_riclpm_needs, Game, Autonomy1, Competence1, Relatedness1, Enjoyment1, Extrinsic1, SPANE2, CSAS2))
-ggsave("Figure-4.png", width = 6, height = 6)
+ggsave(here("Output/Figures/Figure-4.png"), width = 6, height = 6)
 ```
 
 ```{r}
@@ -1585,5 +1585,5 @@ tmp3 %>%
   theme(
     axis.text.y = element_markdown()
   )
-ggsave("Figure-5.png", width = 8, height = 6)
+ggsave(here("Output/Figures/Figure-5.png"), width = 8, height = 6)
 ```
