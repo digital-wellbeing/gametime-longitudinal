@@ -39,12 +39,12 @@ library(ggdist)
 library(patchwork)
 library(readxl)
 library(lavaan)
-library(tidyverse)
 library(GGally)
 # remotes::install_github("jflournoy/riclpmr")  
 library(riclpmr)
 library(ggnewscale)
 library(showtext)
+library(tidyverse)
 ```
 
 ```{r setup, include=FALSE}
@@ -504,8 +504,8 @@ Note that `played` variable is not useful; it was not collected in waves 2 and 3
 
 ```{r}
 d %>%
-  mutate(hh = Hours > 40) %>%
-  tabyl(hh) %>%
+  mutate(Hours_over_40 = Hours > 40) %>%
+  tabyl(Hours_over_40) %>%
   adorn_pct_formatting()
 tmp <- d %>%
   select(
@@ -551,13 +551,22 @@ tmp %>%
     position = position_nudge(x = .05)
   ) +
   stat_summary(
-    fun.data = mean_cl_normal, fatten = 1.25,
-    position = position_dodge(.075)
+    fun.data = mean_cl_normal, fatten = 1,
+    position = position_dodge(.08)
   ) +
   facet_wrap("name", scales = "free_y", ncol = 3) +
   labs(y = "Value") +
-  guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
-  theme(legend.position = "bottom", legend.title = element_blank())
+  guides(
+    color = guide_legend(nrow = 2, byrow = TRUE),
+    fill = guide_legend(nrow = 2, byrow = TRUE)
+  ) +
+  theme(
+    legend.position = "bottom", 
+    legend.justification = "left", 
+    legend.margin = margin(l = -12),
+    legend.title = element_blank(), 
+    legend.text = element_text(margin = margin(l = -8), size = 8)
+  )
 ggsave(here("Output/Figures/Figure-1.png"), width = 5, height = 6)
 ```
 
@@ -578,7 +587,9 @@ d %>%
 
 # Models
 
-Need some new data shapes for models maybe
+## Simple correlation
+
+A new data frame for e.g. regression models
 
 ```{r}
 # within and between component of predictors
@@ -586,7 +597,7 @@ Need some new data shapes for models maybe
 d_model <- d %>%
   ### !! Remove this when data is available !!
   mutate(Hours = coalesce(Hours, hours_est)) %>%
-  select(Game, pid, Wave, Hours, SPANE, CSAS, Needs) %>%
+  select(Game, pid, Wave, Hours, SPANE, CSAS, Needs, Enjoyment) %>%
   arrange(Game, pid, Wave) %>%
   # Grand mean centered hours
   mutate(Hours_g = Hours - mean(Hours, na.rm = T)) %>%
@@ -599,9 +610,7 @@ d_model <- d %>%
   ungroup()
 ```
 
-## Simple correlation
-
-Regression coefficients (standardized and raw) of well-being predicted from game play and needs satisfactions.
+Regression coefficients (standardized and raw) of well-being predicted from game play need satisfaction, and intrinsic motivation (enjoyment).
 
 ```{r}
 d_model %>%
@@ -610,9 +619,9 @@ d_model %>%
   pivot_longer(
     c(Affect, `Life satisfaction`), 
     names_to = "Outcome", values_to = "Outcome_value"
-    ) %>%
+  ) %>%
   pivot_longer(
-    c(Needs, Hours), 
+    c(Needs, Enjoyment, Hours), 
     names_to = "Predictor", values_to = "Predictor_value"
   ) %>% 
   group_by(Game, Outcome, Predictor, Wave) %>%
@@ -647,40 +656,42 @@ d_model %>%
   facet_grid(Panel~Predictor, scales = "free_x") +
   theme(
     axis.title.x = element_markdown(),
-    axis.title.y = element_blank()
+    axis.title.y = element_blank(),
+    legend.position = "bottom",
+    legend.title = element_blank()
   )
 ```
 
 # RICLPM
 
-Wrangle data to a format where function can be mapped to variable pairs
+Wrangle data to a format where lavaan model is easier to map to variable pairs: Wide format with different rows for outcomes (well-being) and predictors (hours, needs, motivations).
 
 ```{r}
-d_riclpm <- d %>%
+d_riclpm_long <- d %>%
   ### !! Remove this when data is available !!
   filter(!(Game %in% c("Forza Horizon 4", "Gran Turismo Sport"))) %>%
   mutate(Hours = coalesce(Hours, hours_est)) %>%
   # Make coefficients scales more reasonable by dividing hours by ten
   mutate(Hours = Hours / 10) %>%
-  select(Game, pid, wid, Hours, SPANE, CSAS) %>%
-  # Standardize within game if needed
-  # group_by(Game) %>%
-  # mutate(across(SPANE:CSAS, ~as.numeric(scale(.)))) %>%
-  # ungroup() %>%
-  pivot_longer(SPANE:CSAS) %>%
-  rename(x = Hours, y = value) %>%
-  # Within person centering if needed
-  group_by(Game, pid) %>%
-  mutate(x_c = x - mean(x, na.rm = TRUE)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = wid, values_from = c(x, x_c, y), names_sep = "")
+  select(Game, pid, wid, Hours, Needs, Enjoyment, SPANE, CSAS) %>%
+  # Long format on well-being scores (outcomes)
+  pivot_longer(
+    c(SPANE, CSAS), names_to = "y_var", values_to = "y"
+  ) %>%
+  # Long format on other variables (predictors)
+  pivot_longer(
+    c(Hours, Needs, Enjoyment), 
+    names_to = "x_var", values_to = "x"
+  )
+d_riclpm_wide <- d_riclpm_long %>% 
+  pivot_wider(names_from = wid, values_from = c(x, y), names_sep = "")
 ```
 
 ## Some kind of data figure
 
 ```{r}
 Order <- tibble(
-  name = c("SPANE", "CSAS", "SPANE", "CSAS"),
+  y_var = c("SPANE", "CSAS", "SPANE", "CSAS"),
   wid = c(2, 2, 3, 3),
   Panel = c(
     "Affect[plain('[Wave 2]')]",
@@ -690,28 +701,22 @@ Order <- tibble(
   ),
   Panel_label = fct_inorder(Panel)
 )
-tmp <- d %>%
-  ### !! Remove this when data is available !!
-  filter(!(Game %in% c("Forza Horizon 4", "Gran Turismo Sport"))) %>%
-  mutate(Hours = coalesce(Hours, hours_est)) %>%
-  select(Game, pid, wid, Wave, Hours, SPANE, CSAS) %>%
-  arrange(Game, pid, wid, Wave) %>%
-  group_by(Game, pid) %>%
-  mutate(lag_Hours = lag(Hours)) %>%
-  ungroup()
 
-tmp %>%
-  mutate(too_great = lag_Hours >= 50) %>%
-  tabyl(too_great) %>%
-  adorn_pct_formatting()
-p_lagged_scatter <- tmp %>%
-  filter(wid > 1, lag_Hours <= 50) %>%
-  pivot_longer(SPANE:CSAS) %>%
-  left_join(Order) %>%
-  ggplot(aes(lag_Hours, value, col = Game)) +
+d_riclpm_plots <- d_riclpm_long %>% 
+  arrange(Game, pid, x_var, wid) %>%
+  group_by(Game, pid, x_var, y_var) %>%
+  mutate(lag_x = lag(x)) %>%
+  left_join(Order) %>% 
+  ungroup() %>% 
+  filter(wid > 1)
+
+d_riclpm_plots %>% 
+  filter(x_var == "Hours", lag_x <= 5) %>% 
+  ggplot(aes(lag_x, y, col = Game)) + 
   scale_x_continuous(
     "Hours played at previous wave",
-    breaks = pretty_breaks()
+    breaks = pretty_breaks(), 
+    labels = function(x) x*10
   ) +
   scale_y_continuous(
     "Well-being at current wave",
@@ -725,62 +730,32 @@ p_lagged_scatter <- tmp %>%
   geom_point(size = .2, alpha = .5) +
   guides(
     color = guide_legend(
-      override.aes = list(size = 2, shape = 16, alpha = 1)
-    )
-  ) +
-  facet_wrap("Panel_label", scales = "free_y", labeller = label_parsed) +
-  theme(aspect.ratio = 1)
-p_lagged_scatter
-ggsave(here("Output/Figures/Figure-2-raw.png"), width = 5, height = 4)
-d_riclpm %>%
-  mutate(is_extreme = abs(x1) > 2 | abs(x2) > 2) %>%
-  tabyl(is_extreme) %>%
-  adorn_pct_formatting()
-p1 <- d_riclpm %>%
-  mutate(name = fct_relevel(name, "SPANE")) %>%
-  ggplot(aes(x_c1, y2, col = Game, fill = Game)) +
-  scale_color_brewer(palette = "Set1", aesthetics = c("color", "fill")) +
-  geom_smooth(
-    method = "lm", size = .4,
-    alpha = .2, show.legend = FALSE
-  ) +
-  geom_point(size = .2, alpha = .5) +
-  scale_x_continuous(breaks = pretty_breaks()) +
-  scale_y_continuous(breaks = pretty_breaks()) +
-  coord_cartesian(xlim = c(-20, 20)) +
-  facet_wrap(
-    "name",
-    labeller = labeller(
-      .cols = c("SPANE" = "Affect", "CSAS" = "Life satisfaction")
-    )
-  ) +
-  guides(
-    color = guide_legend(
-      override.aes = list(size = 2, shape = 16, alpha = 1)
-    )
+      override.aes = list(size = 2, shape = 16, alpha = 1),
+      nrow = 2, byrow = TRUE
+    ),
+    fill = guide_legend(nrow = 2, byrow = TRUE)
   ) +
   theme(
-    axis.title.x = element_markdown(),
-    axis.title.y = element_markdown()
-  )
-p2 <- p1 +
-  aes(x_c2, y3) +
-  labs(
-    x = "Hours played<sub>[t2]</sub>",
-    y = "Well-being<sub>[t3]</sub>"
-  )
-p1 <- p1 +
-  labs(
-    x = "Hours played<sub>[t1]</sub>",
-    y = "Well-being<sub>[t2]</sub>"
-  )
-(p1 / p2) + plot_layout(guides = "collect")
-ggsave(here("Output/Figures/Figure-2-centered.png"), width = 5, height = 4)
+    aspect.ratio = 1,
+    legend.position = "bottom", 
+    legend.justification = "left", 
+    legend.margin = margin(l = -12),
+    legend.title = element_blank(), 
+    legend.text = element_text(margin = margin(l = -8), size = 8)
+  ) +
+  facet_wrap("Panel_label", scales = "free_y", labeller = label_parsed)
+ggsave(here("Output/Figures/Figure-2.png"), width = 5, height = 4)
+
+# How many x values are over 50?
+last_plot()$data %>% 
+  mutate(too_great = lag_x >= 5) %>%
+  tabyl(too_great) %>%
+  adorn_pct_formatting()
 ```
 
 ## Fit one model to all data
 
-First fit RICLPM to all data. Separately to the two well-being outcomes. Constrain (cross)lagged parameters
+First fit RICLPM to all data. Separately to the two well-being outcomes, and each predictor (hours, subjective scales). Constrain (cross)lagged parameters
 
 Syntax based on <https://jeroendmulder.github.io/RI-CLPM/lavaan.html>
 
@@ -829,8 +804,8 @@ riclpm_constrained <- "
 ```
 
 ```{r}
-fit_riclpm <- d_riclpm %>%
-  group_by(name) %>%
+fit_riclpm_all <- d_riclpm_wide %>%
+  group_by(y_var, x_var) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained,
@@ -853,18 +828,18 @@ get_lavaan_pars <- function(x) {
     unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE)
 }
 
-pars_riclpm_avg <- fit_riclpm %>%
+pars_riclpm_avg <- fit_riclpm_all %>%
   mutate(pars = map(fit, get_lavaan_pars)) %>%
   select(-fit)
 ```
 
 ## Separate models per game
 
-Fit the model separately to each game.
+Fit the above model separately to each game.
 
 ```{r}
-fit_riclpm <- d_riclpm %>%
-  group_by(name, Game) %>%
+fit_riclpm_sep <- d_riclpm_wide %>%
+  group_by(y_var, x_var, Game) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained,
@@ -874,7 +849,7 @@ fit_riclpm <- d_riclpm %>%
       int.ov.free = TRUE
     ) %>% list()
   )
-pars_riclpm_sep <- fit_riclpm %>%
+pars_riclpm_sep <- fit_riclpm_sep %>%
   mutate(pars = map(fit, get_lavaan_pars)) %>%
   select(-fit)
 ```
@@ -929,8 +904,8 @@ riclpm_constrained_multigroup <- "
 ```
 
 ```{r}
-fit_riclpm <- d_riclpm %>%
-  group_by(name) %>%
+fit_riclpm_mg <- d_riclpm_wide %>%
+  group_by(y_var, x_var) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained_multigroup,
@@ -942,12 +917,18 @@ fit_riclpm <- d_riclpm %>%
     ) %>% list()
   )
 
-pars_riclpm_mg <- fit_riclpm %>%
+pars_riclpm_mg <- fit_riclpm_mg %>%
   mutate(pars = map(fit, get_lavaan_pars)) %>%
   mutate(
     pars = map2(
       pars, fit,
-      ~ left_join(.x, tibble(group = 1:length(unique(d_riclpm$Game)), Game = .y@Data@group.label))
+      ~ left_join(
+        .x, 
+        tibble(
+          group = 1:length(unique(d_riclpm$Game)), 
+          Game = .y@Data@group.label
+        )
+      )
     )
   ) %>%
   select(-fit)
@@ -956,9 +937,10 @@ pars_riclpm_mg <- fit_riclpm %>%
 Look at estimates
 
 ```{r}
+# Table of RICLPM parameters
 pars_riclpm <- pars_riclpm_mg %>%
   unnest(pars) %>%
-  group_by(name, Game) %>%
+  group_by(y_var, x_var, Game) %>%
   nest() %>%
   rename(pars = data) %>%
   mutate(Model = "Multigroup") %>%
@@ -966,23 +948,68 @@ pars_riclpm <- pars_riclpm_mg %>%
   bind_rows(pars_riclpm_avg %>% mutate(Model = "Average", Game = "Average")) %>%
   ungroup() %>%
   unnest(pars) %>%
-  filter(Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")) %>%
+  # Take regression parameters at first interval, and 
+  # covariance parameters of interest
+  filter(
+    (str_detect(Parameter, " ~ ") & !str_detect(Parameter, "3")) |
+    Parameter %in% c("RIx ~~ RIy", "wx1 ~~ wy1", "wx2 ~~ wy2", "wx3 ~~ wy3")
+  ) %>%
   mutate(Game = fct_relevel(Game, "Average"))
+
+# Plot of regression parameters (autocorrelations and crosslags; raw)
 pars_riclpm %>%
-  ggplot(aes(est, Game, col = Model, xmin = ci.lower, xmax = ci.upper, shape = name)) +
+  filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>% 
+  ggplot(
+    aes(
+      est, Game, 
+      col = Model, xmin = ci.lower, xmax = ci.upper, shape = y_var
+    )
+  ) +
+  scale_x_continuous(
+    "Estimate",
+    breaks = pretty_breaks()
+  ) +
   geom_vline(xintercept = 0, size = .2, lty = 2) +
-  geom_pointrangeh(position = position_dodge2v(.25), size = .33) +
-  facet_grid(Parameter ~ Type, scales = "free_x")
+  geom_pointrangeh(position = position_dodge2v(.5), size = .4) +
+  facet_grid(Parameter ~ x_var, scales = "free_x")
+
+# Plots of covariance parameters (raw)
+last_plot() %+% 
+  filter(
+    pars_riclpm, 
+    Type == "Unstandardized", 
+    str_detect(Parameter, " ~~ ")
+  )
 ```
 
-# Meta analysis
+We need to decide whether to use multigroup estimates or independent model estimates. Potentially former and maybe give more game-specific parameters in the model. For now we have gone with independent model estimates.
+
+# Meta-analyses
+
+Number of observations/participants per model
+
+```{r}
+fit_riclpm_sep %>%
+  mutate(N = map_dbl(fit, nobs) %>% comma) %>% 
+  select(-fit) %>% 
+  pivot_wider(
+    names_from = x_var, 
+    values_from = N, 
+    names_glue = "{x_var} {.value}"
+  ) %>% 
+  rename(Outcome = y_var) %>% 
+  kable(caption = "Sample sizes per RICLPM")
+```
+
+Then conduct all meta-analyses (for each y_var-x_var pair, parameter of interest, and type of parameter (standardized, unstandardized)) based on the independent fit RICLPMs
 
 ```{r results='hide'}
 # Meta-analyze the models fitted independently to games
+# Select these parameters only
 d_ma <- pars_riclpm %>%
-  filter(Model == "Independent")
+  filter(Model == "Independent", str_detect(Parameter, " ~ "))
 
-# Model formula and priors
+# Compile meta-analytic brms/Stan model
 bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
 fit_ma_empty <- brm(
   bf_ma,
@@ -994,22 +1021,24 @@ fit_ma_empty <- brm(
   file = here("Output/brms/brm-ma-empty")
 )
 
-# Fit meta-analysis separately to each outcome, parameter, and type (standardized vs unstandardized)
+# Fit meta-analysis separately to each x-y pair X parameter X type 
+# by updating the compiled model (48 meta-analyses)
 fit_ma <- d_ma %>%
-  group_by(name, Parameter, Type) %>%
+  group_by(x_var, y_var, Parameter, lhs, rhs, Type) %>%
   summarise(
     fit = list(
       update(
         fit_ma_empty,
         newdata = cur_data(),
         control = list(adapt_delta = .9999, max_treedepth = 15),
-        iter = 15000, warmup = 5000,
-        refresh = 0
+        iter = 15000, warmup = 5000, 
+        refresh = 0,
+        file = here(str_glue("Output/brms/brm-ma-{cur_group_id()}"))
       )
     )
   )
 
-# Function to get varying and average effects' posteriors
+# Function to get varying and average effects' posteriors from brmsfit
 get_ma_post <- function(x) {
   coef(x, summary = FALSE) %>%
     .[["Game"]] %>%
@@ -1020,56 +1049,86 @@ get_ma_post <- function(x) {
 }
 ```
 
+## Hours <-> WB
+
+Draw a forest plot of meta-analyses with hours
+
 ```{r}
-# Give nice labels--make sure the ordering is correct here!
-Order <-
-  tibble(
-    name = c("SPANE", "CSAS", "SPANE", "CSAS"),
-    Parameter = c("wy2 ~ wx1", "wy2 ~ wx1", "wx2 ~ wy1", "wx2 ~ wy1"),
-    Panel_label = c(
-      'Play[plain("[t-1]")]%->%affect[plain("[t]")]',
-      'Play[plain("[t-1]")]%->%life~satisfaction[plain("[t]")]',
-      'Affect[plain("[t-1]")]%->%play[plain("[t]")]',
-      'Life~satisfaction[plain("[t-1]")]%->%play[plain("[t]")]'
+# Create nicer labels for variables and panels
+Order <- distinct(fit_ma, x_var, y_var, Parameter, lhs, rhs) %>% 
+  ungroup() %>% 
+  # Meta-analyses only for regression parameters
+  filter(str_detect(Parameter, " ~ ")) %>% 
+  mutate(
+    x_lab = case_when(
+      x_var == "Hours" ~ "Play",
+      x_var == "Enjoyment" ~ "Intrinsic~motivation",
+      x_var == "Needs" ~ "Need~satisfaction"
+    ),
+    y_lab = case_when(
+      y_var == "SPANE" ~ "Affect",
+      y_var == "CSAS" ~ "Life~satisfaction"
+    ),
+    Panel_label = case_when(
+      Parameter == "wx2 ~ wx1" ~ 
+        str_glue('{x_lab}[plain("[t-1]")]%->%{x_lab}[plain("[t]")]'),
+      Parameter == "wy2 ~ wy1" ~ 
+        str_glue('{y_lab}[plain("[t-1]")]%->%{y_lab}[plain("[t]")]'),
+      Parameter == "wy2 ~ wx1" ~ 
+        str_glue('{x_lab}[plain("[t-1]")]%->%{y_lab}[plain("[t]")]'),
+      Parameter == "wx2 ~ wy1" ~ 
+        str_glue('{y_lab}[plain("[t-1]")]%->%{x_lab}[plain("[t]")]')
     )
-  ) %>%
+  ) %>% 
+  mutate(
+    Parameter_order = factor(
+      Parameter, 
+      levels = c("wy2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wx2 ~ wx1")
+      )
+    ) %>% 
+  arrange(Parameter_order, desc(y_var)) %>% 
   mutate(Panel_label = fct_inorder(Panel_label))
+# Did ordering work?
+# Order %>% 
+#   filter(x_var == "Enjoyment", Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")) %>% 
+#   mutate(n = as.numeric(Panel_label))
 
 # Table of ROPEs
 # Smallest subjective change as a percentage from Anvari&Lakens
 sscp <- .2 / 5
-rope_limits <- distinct(fit_ma, name, Parameter, Type) %>%
+rope_limits <- distinct(fit_ma, y_var, Parameter, Type) %>%
   mutate(
     rope_limit = case_when(
       Type == "Standardized" ~ .1,
       Type == "Unstandardized" & Parameter == "wx2 ~ wy1" ~ .1,
-      name == "CSAS" ~ (sscp * 11) / 3,
-      name == "SPANE" ~ (sscp * 13) / 3
+      y_var == "CSAS" ~ (sscp * 11) / 3,
+      y_var == "SPANE" ~ (sscp * 13) / 3
     )
   )
 
-# Data for plot of meta-analysis of standardized coefficients
+# Data for plotting meta-analyses' posterior distributions
 p_data <- fit_ma %>%
   mutate(out = map(fit, get_ma_post)) %>%
   select(-fit) %>%
   unnest(out) %>%
   rename(Average = Intercept) %>%
-  pivot_longer(-c(name, Parameter, Type), names_to = "Game") %>%
+  pivot_longer(`AC:NH`:Average, names_to = "Game") %>%
   mutate(Game = fct_relevel(Game, "Average")) %>%
   ungroup() %>%
-  left_join(Order)
+  left_join(Order) %>% 
+  left_join(rope_limits)
 
 # Summaries of posterior distributions
 fit_ma_sum <- p_data %>%
   left_join(rope_limits) %>%
-  group_by(name, Parameter, Type, Game, Panel_label, rope_limit) %>%
+  group_by(y_var, x_var, Parameter, Type, Game, Panel_label, rope_limit) %>%
   summarise(
     describe_posterior(
       value,
       rope_range = c(-unique(rope_limit), unique(rope_limit)),
       test = c("ps", "rope"), rope_ci = 1,
       centrality = "mean"
-    )
+    ) %>% select(-Parameter)
   ) %>%
   ungroup() %>%
   mutate(
@@ -1085,23 +1144,22 @@ fit_ma_sum <- p_data %>%
   left_join(Order) %>%
   mutate(Game = fct_relevel(Game, "Average"))
 
-forest_plot <- function(type = "Unstandardized") {
-  p_data %>%
-    left_join(rope_limits) %>%
-    mutate(is_greater = abs(value) > rope_limit) %>%
-    filter(Type == {{ type }}) %>%
+# Function to draw forest plots
+forest_plot <- function(
+  type = "Unstandardized", 
+  x_var = "Hours", 
+  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
+  lavaan = FALSE
+  ) {
+  out <- fit_ma_sum %>%
+    filter(
+      Type == {{type}}, 
+      x_var == {{x_var}}, 
+      Parameter %in% {{parameters}}
+    ) %>%
     # We can use the xintercept mapping to control alpha below
-    ggplot(aes(value, Game, xintercept = rope_limit)) +
+    ggplot(aes(Mean, Game, xintercept = rope_limit)) +
     coord_cartesian(xlim = c(-.4, .55)) +
-    geom_vline(xintercept = 0, size = .1, col = "grey60") +
-    geom_vline(
-      aes(xintercept = -rope_limit),
-      size = .1, lty = 2, col = "grey60"
-    ) +
-    geom_vline(
-      aes(xintercept = rope_limit),
-      size = .1, lty = 2, col = "grey60"
-    ) +
     scale_x_continuous(
       "Estimated cross-lagged effect",
       breaks = c(-.3, -.2, -.1, 0, .1, .2, .3, .4),
@@ -1115,31 +1173,39 @@ forest_plot <- function(type = "Unstandardized") {
     scale_fill_brewer(
       palette = "Set1", direction = 1, aesthetics = c("fill", "color")
     ) +
-    # Density to hide lines
-    stat_halfeye(
-      fill = "white",
-      height = .5, adjust = 1.5, point_interval = NULL,
-      show.legend = FALSE, normalize = "panels"
+    # Vertical lines for ROPE and 0
+    geom_vline(xintercept = 0, size = .1, col = "grey60") +
+    geom_vline(
+      aes(xintercept = rope_limit),
+      size = .1, lty = 2, col = "grey60"
     ) +
-    # Actual densities
+    geom_vline(
+      aes(xintercept = -rope_limit),
+      size = .1, lty = 2, col = "grey60"
+    ) +
+    # Posterior densities
     stat_halfeye(
+      data = p_data %>% 
+        filter(
+          Type == {{type}}, 
+          x_var == {{x_var}}, 
+          Parameter %in% {{parameters}}
+        ),
       aes(
+        value,
         fill = stat(x > 0),
         alpha = after_stat(abs(x) > xintercept)
       ),
       height = .5, adjust = 1.5, point_interval = NULL,
       show.legend = FALSE, normalize = "panels"
     ) +
+    # Summary geoms and texts
     geom_pointrangeh(
-      data = fit_ma_sum %>%
-        filter(Type == {{ type }}),
       aes(x = Mean, xmin = CI_low, xmax = CI_high),
       size = .33, fatten = 1.5
     ) +
     # CIs in right margin
     geom_text(
-      data = fit_ma_sum %>%
-        filter(Type == {{ type }}),
       vjust = -0.5, size = 3, hjust = 1,
       aes(x = .55, label = Res),
       family = Font
@@ -1148,7 +1214,11 @@ forest_plot <- function(type = "Unstandardized") {
     geom_text(
       data = fit_ma_sum %>%
         filter(Game == "Average") %>%
-        filter(Type == {{ type }}),
+        filter(
+          Type == {{type}}, 
+          x_var == {{x_var}}, 
+          Parameter %in% {{parameters}}
+        ),
       vjust = 1.4, size = 3,
       aes(
         x = sign(Mean) * rope_limit,
@@ -1162,7 +1232,11 @@ forest_plot <- function(type = "Unstandardized") {
     geom_text(
       data = fit_ma_sum %>%
         filter(Game == "Average") %>%
-        filter(Type == {{ type }}),
+        filter(
+          Type == {{type}}, 
+          x_var == {{x_var}}, 
+          Parameter %in% {{parameters}}
+        ),
       vjust = 1.4, size = 3,
       aes(
         x = 0,
@@ -1176,7 +1250,11 @@ forest_plot <- function(type = "Unstandardized") {
     geom_text(
       data = fit_ma_sum %>%
         filter(Game == "Average") %>%
-        filter(Type == {{ type }}),
+        filter(
+          Type == {{type}}, 
+          x_var == {{x_var}}, 
+          Parameter %in% {{parameters}}
+        ),
       vjust = 1.4, size = 3,
       aes(
         x = -sign(Mean) * rope_limit,
@@ -1193,397 +1271,77 @@ forest_plot <- function(type = "Unstandardized") {
       # panel.grid.major.y = element_blank()
     ) +
     facet_wrap("Panel_label", scales = "free_x", labeller = label_parsed)
+  
+  # Also display lavaan game-specific estimates?
+  if (lavaan) {
+    out +
+      geom_pointrangeh(
+        data = d_ma %>%
+          left_join(Order) %>% 
+          filter(
+            Type == {{type}}, 
+            x_var == {{x_var}}, 
+            Parameter %in% {{parameters}}
+          ) %>% 
+          mutate(rope_limit=.1),
+        col = "gray40", fatten = 1.25, size = .33,
+        aes(x = est, xmin = ci.lower, xmax = ci.upper),
+        position = position_nudge(y = -.075)
+      )
+  } else {out}
 }
-forest_plot("Unstandardized")
+forest_plot(
+  "Unstandardized", 
+  "Hours",
+  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"), 
+  lavaan = FALSE
+)
 ggsave(here("Output/Figures/Figure-3-Unstandardized.png"), width = 8, height = 5)
-forest_plot("Standardized")
-ggsave(here("Output/Figures/Figure-3-Standardized.png"), width = 8, height = 5)
+# forest_plot("Standardized")
+# ggsave(here("Output/Figures/Figure-3-Standardized.png"), width = 8, height = 5)
 ```
 
 ```{r}
-# Also check out the individual model estimates
-forest_plot("Unstandardized") +
-  geom_pointrangeh(
-    data = d_ma %>%
-      left_join(Order) %>% 
-      filter(Type == "Unstandardized") %>% 
-      mutate(rope_limit=.1),
-    col = "gray40", fatten = 1.5, size = .5,
-    aes(x = est, xmin = ci.lower, xmax = ci.upper),
-    position = position_nudge(y = -.1)
-  )
+# Also see in comparison to individual model estimates
+forest_plot(
+  "Unstandardized", 
+  "Hours",
+  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"), 
+  lavaan = TRUE
+)
 ```
 
 Table?
 
 ```{r}
 fit_ma_sum %>%
-  filter(Game == "Average") %>%
-  select(Panel_label, Type, Res) %>%
-  pivot_wider(names_from = Type, values_from = Res) %>%
-  kable(caption = "Average effects from meta-analyses")
+  select(y_var, x_var, Game, Parameter, Type, Res) %>% 
+  DT::datatable(filter = "top")
 ```
 
 
-# Motivations
+## Experiences <-> WB
 
-RICLPM of needs/motivations <-> wb
-
-Two models:
-1. Well-being <-> needs satisfactions
-2. Well-being <-> enjoyment motivation and extrinsic motivation
-
-Simplify 2. by just looking at enjoyment??
-
-todo for now.
+These meta-analyses were conducted above. Now we just need to filter for the correct parameters for plots. They are also shown in the table above. Need to double check that everything has worked so these meta analyses are still a bit of WIP.
 
 ```{r}
-d_riclpm_needs <- d %>%
-  ### !! Remove this when data is available !!
-  filter(Game %in% c("Apex Legends", "EVE Online", "The Crew 2")) %>%
-  mutate(Hours = coalesce(Hours, hours_est)) %>%
-  mutate(Hours = Hours / 10) %>%
-  select(Game, pid, wid, Hours, SPANE, CSAS, Autonomy:Extrinsic) %>%
-  # # Standardize within game
-  # group_by(Game) %>%
-  # mutate(across(Hours:Extrinsic, ~as.numeric(scale(.)))) %>%
-  # ungroup() %>%
-  pivot_wider(names_from = wid, values_from = c(Hours:Extrinsic), names_sep = "")
-```
-
-## Some kind of data figure
-
-```{r}
-lm_function1 <-
-  function(data,
-           mapping,
-           ...) {
-    p <-
-      ggplot(
-        data = data,
-        mapping = mapping
-      ) +
-      geom_point(
-        alpha = 0.25, size = .15
-      )
-    p
-  }
-lm_function2 <-
-  function(data,
-           mapping,
-           ...) {
-    p <-
-      ggplot(
-        data = data,
-        mapping = mapping
-      ) +
-      geom_smooth(
-        method = lm, size = .33, alpha = .33,
-        ...
-      )
-    p
-  }
-
-dens_function <-
-  function(data,
-           mapping,
-           ...) {
-    p <-
-      ggplot(
-        data = data,
-        mapping = mapping
-      ) +
-      geom_density(color = NA, alpha = 0.5) +
-      theme(axis.title.y = element_blank())
-  }
-pair_plot <-
-  function(dat) {
-    GGally::ggpairs(
-      data = dat,
-      mapping = aes(col = Game, fill = Game),
-      lower = list(continuous = lm_function1),
-      diag = list(continuous = dens_function),
-      upper = list(continuous = lm_function2),
-      columns = 2:ncol(dat)
-    ) +
-      theme(panel.grid = element_blank())
-  }
-pair_plot(select(d_riclpm_needs, Game, Autonomy1, Competence1, Relatedness1, Enjoyment1, Extrinsic1, SPANE2, CSAS2))
-ggsave(here("Output/Figures/Figure-4.png"), width = 6, height = 6)
-```
-
-```{r}
-needs_riclpm_model <- riclpmr::riclpm_text(
-  list(
-    SPANE = paste0("SPANE", 1:3),
-    CSAS = paste0("CSAS", 1:3),
-    Hours = paste0("Hours", 1:3),
-    Autonomy = paste0("Autonomy", 1:3),
-    Competence = paste0("Competence", 1:3),
-    Relatedness = paste0("Relatedness", 1:3),
-    Enjoyment = paste0("Enjoyment", 1:3),
-    Extrinsic = paste0("Extrinsic", 1:3)
-  )
-)
-fit <- riclpmr::lavriclpm(
-  needs_riclpm_model,
-  d_riclpm_needs,
-  missing = "ml"
-)
-```
-
-```{r}
-Order <- tibble(
-  rhs = c("Autonomy", "Competence", "Relatedness", "Enjoyment", "Extrinsic", "CSAS", "SPANE", "Hours"),
-  Order = rev(1:8),
-  Label = c("Autonomy", "Competence", "Relatedness", "Intrinsic", "Extrinsic", "Life satisfaction", "Affect", "Hours")
-)
-
-get_lavaan_pars(fit) %>%
-  filter(op == "~", Type == "Standardized") %>%
-  filter(lhs %in% c("lat_SPANE2", "lat_CSAS2")) %>%
-  mutate(
-    lhs = str_remove_all(lhs, "lat_"),
-    rhs = str_remove_all(rhs, "lat_"),
-    lhs = str_remove_all(lhs, "2"),
-    rhs = str_remove_all(rhs, "1")
-  ) %>%
-  mutate(
-    lhs = factor(
-      lhs,
-      levels = c("SPANE", "CSAS"),
-      labels = c(
-        'Experience[plain("[t-1]")]%->%Affect[plain("[t]")]',
-        'Experience[plain("[t-1]")]%->%Life~satisfaction[plain("[t]")]'
-      )
-    )
-  ) %>%
-  left_join(Order) %>%
-  mutate(Label = fct_reorder(Label, Order)) %>%
-  ggplot(aes(est, Label)) +
-  geom_vline(xintercept = 0, size = .1, col = "gray50") +
-  geom_pointrange(aes(xmin = ci.lower, xmax = ci.upper)) +
-  labs(x = "Estimated (cross-)lagged effect") +
-  facet_wrap("lhs", labeller = label_parsed) +
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_markdown()
+forest_plot(
+  "Unstandardized", 
+  "Enjoyment",
+  parameters = c("wy2 ~ wx1"), 
+  lavaan = FALSE
+) + theme(axis.title.x = element_blank()) -
+forest_plot(
+  "Unstandardized", 
+  "Needs",
+  parameters = c("wy2 ~ wx1"), 
+  lavaan = FALSE
+) +
+  plot_layout(nrow = 2)
+ggsave(
+  here("Output/Figures/Figure-ma-subjective-Unstandardized.png"), 
+  width = 8, 
+  height = 5
   )
 ```
 
-Separate by game
-
-```{r}
-fit_riclpm_needs_sep <- d_riclpm_needs %>%
-  group_by(Game) %>%
-  summarise(
-    fit = riclpmr::lavriclpm(
-      needs_riclpm_model,
-      cur_data(),
-      missing = "ml"
-    ) %>% list()
-  )
-pars_riclpm_needs_sep <- fit_riclpm_needs_sep %>%
-  mutate(pars = map(fit, get_lavaan_pars)) %>%
-  select(-fit)
-
-pars_riclpm_needs_sep %>%
-  unnest(pars) %>%
-  filter(op == "~", Type == "Standardized") %>%
-  filter(lhs %in% c("lat_SPANE2", "lat_CSAS2")) %>%
-  mutate(
-    lhs = str_remove_all(lhs, "lat_"),
-    rhs = str_remove_all(rhs, "lat_"),
-    lhs = str_remove_all(lhs, "2"),
-    rhs = str_remove_all(rhs, "1")
-  ) %>%
-  mutate(
-    lhs = factor(
-      lhs,
-      levels = c("SPANE", "CSAS"),
-      labels = c("Affect<sub>[t]<sub>", "Life satisfaction<sub>[t]<sub>")
-    )
-  ) %>%
-  left_join(Order) %>%
-  mutate(Label = fct_reorder(Label, Order)) %>%
-  ggplot(aes(est, Label, col = Game)) +
-  geom_vline(xintercept = 0, size = .1, col = "gray50") +
-  geom_pointrange(
-    aes(xmin = ci.lower, xmax = ci.upper),
-    position = position_dodge2v(.25), size = .33
-  ) +
-  labs(x = "Estimated (cross-)lagged effect") +
-  facet_wrap("lhs") +
-  theme(
-    axis.title.y = element_blank(),
-    axis.text.y = element_markdown(),
-    strip.text = element_markdown()
-  )
-```
-
-Meta analysis?
-
-```{r}
-d_ma_needs <- pars_riclpm_needs_sep %>%
-  unnest(pars) %>%
-  filter(op == "~", Type == "Standardized") %>%
-  filter(lhs %in% c("lat_SPANE2", "lat_CSAS2")) %>%
-  mutate(
-    lhs = str_remove_all(lhs, "lat_"),
-    rhs = str_remove_all(rhs, "lat_"),
-    lhs = str_remove_all(lhs, "2"),
-    rhs = str_remove_all(rhs, "1")
-  ) %>%
-  mutate(
-    lhs = factor(
-      lhs,
-      levels = c("SPANE", "CSAS"),
-      labels = c(
-        'Predictor[plain("[t-1]")]%->%Affect[plain("[t]")]',
-        'Predictor[plain("[t-1]")]%->%Life~satisfaction[plain("[t]")]'
-      )
-    )
-  ) %>%
-  left_join(Order) %>%
-  mutate(Label = fct_reorder(Label, Order))
-
-fit_ma_needs <- d_ma_needs %>%
-  group_by(Parameter, lhs, rhs) %>%
-  summarise(
-    fit = list(
-      update(
-        fit_ma_empty,
-        newdata = cur_data(),
-        control = list(adapt_delta = .999, max_treedepth = 15),
-        iter = 5000,
-        refresh = 0
-      )
-    )
-  )
-```
-
-```{r}
-tmp1 <- fit_ma_needs %>%
-  mutate(out = map(fit, get_ma_post)) %>%
-  select(-fit) %>%
-  unnest(out) %>%
-  rename(Average = Intercept) %>%
-  pivot_longer(`Apex Legends`:Average, names_to = "Game") %>%
-  ungroup() %>%
-  left_join(Order) %>%
-  mutate(Label = fct_reorder(Label, Order))
-tmp2 <- filter(tmp1, Game != "Average")
-tmp3 <- filter(tmp1, Game == "Average")
-
-tmp3_sum <- fit_ma_needs %>%
-  mutate(out = map(fit, get_ma_post)) %>%
-  select(-fit) %>%
-  unnest(out) %>%
-  select(lhs, rhs, Average = Intercept) %>%
-  group_by(Parameter, lhs, rhs) %>%
-  summarise(
-    A = list(
-      describe_posterior(
-        cur_data()$Average,
-        rope_range = c(-.1, .1),
-        test = c("ps", "rope"),
-        centrality = "mean"
-      ) %>%
-        select(-Parameter)
-    )
-  ) %>%
-  unnest(A) %>%
-  left_join(Order) %>%
-  mutate(Label = fct_reorder(Label, Order)) %>%
-  mutate(
-    across(
-      c(Mean, CI_low, CI_high),
-      .fns = list(r = ~ format(round(., 2), nsmall = 2))
-    )
-  ) %>%
-  mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]"))
-
-tmp3 %>%
-  ggplot(aes(value, Label)) +
-  geom_vline(xintercept = 0, size = .1, col = "grey60") +
-  geom_vline(xintercept = c(-.1, .1), size = .1, lty = 2, col = "grey60") +
-  coord_cartesian(xlim = c(-.4, .7)) +
-  scale_x_continuous(
-    "Estimated (cross-)lagged effect",
-    breaks = c(-.3, -.2, -.1, 0, .1, .2, .3, .4),
-    expand = expansion(.01)
-  ) +
-  scale_y_discrete(
-    "Predictor",
-    expand = expansion(c(0.15, 0.25))
-  ) +
-  scale_alpha_manual(values = c(.33, 1)) +
-  scale_fill_brewer(
-    palette = "Set1", direction = 1, aesthetics = c("fill", "color")
-  ) +
-  stat_halfeye(
-    aes(fill = stat(x > 0), alpha = stat(abs(x) > .1)),
-    height = .5, adjust = 1.5, point_interval = NULL,
-    show.legend = FALSE, normalize = "panels"
-  ) +
-  geom_text(
-    data = tmp3_sum,
-    vjust = -1.4, size = 3,
-    aes(
-      x = sign(Mean) * .11,
-      hjust = ifelse(sign(Mean) == 1, 0, 1),
-      label = str_glue("{percent(ps, 1)}"),
-      col = as.logical(sign(Mean) == 1)
-    ),
-    family = Font,
-    show.legend = FALSE
-  ) +
-  geom_text(
-    data = tmp3_sum,
-    vjust = -1.4, size = 3,
-    aes(
-      x = 0,
-      hjust = 0.5,
-      label = str_glue("{percent(ROPE_Percentage, 1)}")
-    ),
-    col = "gray50",
-    family = Font,
-    show.legend = FALSE
-  ) +
-  geom_text(
-    data = tmp3_sum,
-    vjust = -1.4, size = 3,
-    aes(
-      x = -sign(Mean) * .11,
-      hjust = ifelse(sign(Mean) == 1, 1, 0),
-      label = str_glue("{percent(1-(ROPE_Percentage+ps), 1)}"),
-      col = as.logical(-sign(Mean) == 1)
-    ),
-    family = Font,
-    show.legend = FALSE
-  ) +
-  geom_text(
-    data = tmp3_sum, vjust = -0.5, size = 3, hjust = 1,
-    aes(x = .7, label = Res),
-    family = Font
-  ) +
-  ggnewscale::new_scale_fill() +
-  ggnewscale::new_scale("alpha") +
-  scale_alpha_manual(values = c(.2, .6)) +
-  stat_halfeye(
-    data = tmp2,
-    aes(alpha = stat(abs(x) > .1), fill = Game, group = Game),
-    height = .5, adjust = 1.5, show_interval = FALSE,
-    normalize = "panels", side = "bottom"
-  ) +
-  geom_pointrangeh(
-    data = tmp3 %>% group_by(lhs, rhs, Label, Game) %>% mean_hdi(value),
-    aes(x = value, xmin = .lower, xmax = .upper), fatten = 2, size = .33
-  ) +
-  guides(alpha = "none") +
-  facet_wrap("lhs", labeller = label_parsed) +
-  theme(
-    axis.text.y = element_markdown()
-  )
-ggsave(here("Output/Figures/Figure-5.png"), width = 8, height = 6)
-```
