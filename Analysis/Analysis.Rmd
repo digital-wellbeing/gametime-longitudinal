@@ -958,11 +958,12 @@ pars_riclpm <- pars_riclpm_mg %>%
 
 # Plot of regression parameters (autocorrelations and crosslags; raw)
 pars_riclpm %>%
+  rename(Predictor = x_var, Outcome = y_var) %>% 
   filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>% 
   ggplot(
     aes(
       est, Game, 
-      col = Model, xmin = ci.lower, xmax = ci.upper, shape = y_var
+      col = Model, xmin = ci.lower, xmax = ci.upper, shape = Outcome
     )
   ) +
   scale_x_continuous(
@@ -971,7 +972,7 @@ pars_riclpm %>%
   ) +
   geom_vline(xintercept = 0, size = .2, lty = 2) +
   geom_pointrangeh(position = position_dodge2v(.5), size = .4) +
-  facet_grid(Parameter ~ x_var, scales = "free_x")
+  facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
 
 # Plots of covariance parameters (raw)
 last_plot() %+% 
