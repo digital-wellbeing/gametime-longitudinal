@@ -1,0 +1,283 @@
+---
+title: "Multilevel RI-CLPM in Stan"
+author: "Kristoffer"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup}
+knitr::opts_chunk$set(cache = TRUE)
+library(blavaan)
+library(lavaan)
+library(tidyverse)
+library(here)
+library(knitr)
+```
+
+In this document I try to fit a multilevel RICLPM using custom stan code (based on a blavaan model). 
+
+## Simulate data
+Let's simulate a multilevel version of the RICLPM. We'll do 10 games and 50 participants per game. I'll add random effects to the within regression coefs only. All other parameters are shared by all games.  
+
+```{r}
+source(here("Models/RI-CLPM/simulate-RICLPM-data.R"))
+params <- list(
+    n = 50, # n per game
+    n2 = 10, # n games
+    # beta = autoregressive params
+    beta_2x = 0.66,
+    beta_2y = 0.33,
+    beta_3x = 0.66,
+    beta_3y = 0.33,
+    # gamma = cross-lagged effects
+    gamma_2x = 0.22,
+    gamma_2y = 0.55,
+    gamma_3x = 0.22,
+    gamma_3y = 0.55,
+    # multilevel
+    gamma_x_sd = 0.5,
+    gamma_y_sd = 0.5,
+    beta_x_sd = 0.5,
+    beta_y_sd = 0.5,
+    x_mean = 2,
+    y_mean = 4,
+    ## covariances
+    sd_wx1 = 1,
+    sd_wy1 = 1,
+    cor_wx1_wy1 = 0.5,
+    sd_wx2 = 1.7,
+    sd_wy2 = 1.33,
+    cor_wx2_wy2 = 0.6,
+    sd_wx3 = 1.33,
+    sd_wy3 = 1.44,
+    cor_wx3_wy3 = 0.44,
+    sd_x_RE = 1.2,
+    sd_y_RE = 1.44,
+    cor_xy_intercepts = 0.33
+)
+set.seed(4545)
+d <- do.call(sim_RICLPM_data, params)
+kable(head(d), digits = 2)
+kable(colMeans(d), digits = 2)
+
+```
+
+I also center the variables in a vain hope of speeding up the sampling.
+```{r}
+d2 <- d %>%
+  mutate(
+    x1 = x1 - mean(x1),
+    x2 = x2 - mean(x2),
+    x3 = x3 - mean(x3),
+    y1 = y1 - mean(y1),
+    y2 = y2 - mean(y2),
+    y3 = y3 - mean(y3)
+)
+```
+
+## Model
+We'll use the constrained lavaan model as a template
+
+```{r}
+riclpm <- '
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables.
+  wx2 ~ a*wx1 + b*wy1 
+  wy2 ~ c*wx1 + d*wy1
+  wx3 ~ a*wx2 + b*wy2
+  wy3 ~ c*wx2 + d*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+'
+```
+
+We get the data and stan code from a multigroup blavaan model.
+
+```{r, eval = FALSE}
+fit_tmp <- blavaan(
+    riclpm, data = d2,
+    group = "cluster",
+    target = "stanclassic",
+    meanstructure = TRUE, 
+    int.ov.free = TRUE,
+    burnin = 0,
+    sample = 0,
+    mcmcfile = "lavExportStanML",
+    bcontrol = list(cores = 1, control = list(adapt_delta = 0.8))
+)
+```
+
+I've manually modified the stan code into a multilevel model instead.
+
+```{r, eval = FALSE}
+library(cmdstanr)
+mod <- cmdstan_model(
+    stan_file = here("Models/RICLPM-2L-stan/lavExportStanML/semML.stan")
+    )
+# load the standata exported from blavaan    
+load(here("Models/RICLPM-2L-stan/lavExportStanML/semstan.rda"))
+standata <- stantrans$data
+# add custom data for ML
+n2 <- length(unique(d$cluster))
+standata$M_1 <- 4 # n game-level REs
+standata$N_1 <- 50
+standata$N_2 <- n2
+standata$J_1 <- d$cluster
+
+# Fit model
+fit <- mod$sample(
+  data = standata,
+  chains = 3,
+  parallel_chains = 3,
+  max_treedepth = 10,
+)
+fit$save_object(
+    file = here("Models/RICLPM-2L-stan/lavExportStanML/fit_ML.rds")
+    )
+```
+
+## Results
+It took approx 6500 seconds to fit on a rather slow Xeon CPU. All iter hit max three depth, but results seem fine.
+
+```{r, include = FALSE}
+fit <- readRDS(here("Models/RICLPM-2L-stan/fit_ML.rds"))
+```
+
+
+Let's look at the key parameters
+
+* beta[1] = beta_x, x <- x
+* beta[2] = gamma_x, x <- y
+* beta[3] = gamma_y, y <- x
+* beta[4] = beta_y, y <- y
+
+* psifree[1:2] random intercepts
+* psifree[3:8] ws latent variances
+
+* sd_1[1:4] = game-level random effects for beta[1:4]
+```{r}
+coef_sum <- fit$summary(
+  c(
+    paste0("betafree[", 1:4, "]"),
+    paste0("sd_1[", 1:4, "]"),
+    paste0("psifree[", 1:8, "]")
+    ), 
+  mean, median, sd,
+  ~quantile(.x, probs = c(0.025, 0.975)),
+  "rhat", "ess_bulk", "ess_tail"
+  )
+
+kable(coef_sum, digits = 2)  
+```
+
+## Plots results
+betas
+
+```{r, echo = FALSE}
+tmp <- coef_sum %>% filter(grepl("^beta", variable))
+
+# use the mean of the sampled effects as true value
+tmp$theta <- d %>% 
+    select(beta_2x, gamma_2x, gamma_2y, beta_2y) %>%
+    apply(2, mean)
+
+ggplot(
+    tmp,
+    aes(mean, variable)
+    ) + 
+    geom_point(aes(color = "est")) +
+    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "est")) +
+    geom_point(aes(x = theta, color = "true value")) +
+    labs(
+        title = "Latent within effects", 
+        subtitle = "linerange = 95% CI"
+    )
+```
+
+```{r, echo = FALSE}
+tmp2 <- coef_sum %>% filter(grepl("^psi", variable))
+tmp2$theta <- with(
+    params, 
+    c(
+        sd_x_RE, sd_y_RE, 
+        sd_wx1, sd_wy1,
+        sd_wx2, sd_wy2,
+        sd_wx3, sd_wy3
+    )
+)
+
+ggplot(
+    tmp2,
+    aes(mean, variable)
+    ) + 
+    geom_point(aes(color = "est")) +
+    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "est")) +
+    geom_point(aes(x = theta, color = "true value")) +
+    labs(
+        title = "Random intercepts and latent variances", 
+        subtitle = "linerange = 95% CI"
+    )
+```
+
+```{r, echo = FALSE}
+tmp3 <- coef_sum %>% filter(grepl("^sd", variable))
+tmp3$theta <- with(
+    params, 
+    c(
+        beta_x_sd, gamma_x_sd, 
+        gamma_y_sd, beta_y_sd
+    )
+)
+
+ggplot(
+    tmp3,
+    aes(mean, variable)
+    ) + 
+    geom_point(aes(color = "est")) +
+    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "est")) +
+    geom_point(aes(x = theta, color = "true value")) +
+    labs(
+        title = "Game-level random effects (betas)", 
+        subtitle = "linerange = 95% CI"
+    )
+```
+
+## Conclusions
+- These results are pretty promising
+- Sampling is inefficient, but feasible
+- Should probably use correlated random effects
+- Let more parameters vary by game?
+- Should check if SEs/CIs are correct
+    - Slow simulation
+- Try with real data?
