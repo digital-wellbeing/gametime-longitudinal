@@ -1,11 +1,11 @@
 ---
-title: "Multilevel RI-CLPM in Stan"
-author: "Kristoffer"
+title: "Multilevel RICLPM in Stan"
+author: "Kristoffer Magnusson"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
-```{r setup}
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(cache = TRUE)
 library(blavaan)
 library(lavaan)
@@ -202,8 +202,7 @@ kable(coef_sum, digits = 2)
 ```
 
 ## Plots results
-betas
-
+Plot estimates + 95% CIs vs true parameters values.
 ```{r, echo = FALSE}
 tmp <- coef_sum %>% filter(grepl("^beta", variable))
 
