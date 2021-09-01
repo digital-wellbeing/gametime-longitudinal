@@ -7,7 +7,6 @@
 
 # User-specific files
 .Ruserdata
-.vscode/
 
 # Example code in package build process
 *-Ex.R
@@ -41,3 +40,12 @@ vignettes/*.pdf
 
 # Data
 Data/
+
+# Vscode stuff
+.vscode/
+
+# Output
+Output/Analysis_files/
+Output/*.html
+Output/Figures/*.png
+Output/brms/*.rds
