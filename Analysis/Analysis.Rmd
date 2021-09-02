@@ -570,8 +570,88 @@ tmp %>%
 ggsave(here("Output/Figures/Figure-1.png"), width = 5, height = 6)
 ```
 
-# Bivariate relations
 
+### Kristoffer's alternative plot
+A small multiple plot could work better, something like this. Could add some more color.
+```{r}
+tmp_plot <- tmp %>%
+  # Order points from low to high value within panel and wave
+  # so dodging doesn't look like a mess.
+  mutate(within_panel_wave_order = str_glue("{name}.{Game}.{Wave}")) %>%
+  group_by(name, Wave, Game) %>%
+  mutate(mv = mean(value, na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(name, Wave, mv) %>%
+  mutate(within_panel_wave_order = fct_inorder(within_panel_wave_order))
+  
+tmp_wave_mean <- tmp_plot %>%
+    group_by(Wave, Game, name) %>%
+    summarize(y = mean(value))
+col1 <- "#2980b9"
+col2 <- "#2980b9"
+
+tmp_plot %>%
+  ggplot(
+    aes(
+      Wave, 
+      value,
+      fill = Game, 
+      color, Game,
+      group = Game
+    )
+  ) +
+  scale_x_discrete(labels = 1:3, expand = expansion(c(0.1, .1))) +
+  scale_color_manual(
+      values = c(col1, col2, col1, col2, col1, col2, col1), 
+      aesthetics = c("fill", "color", "slab_color")) +
+  scale_y_continuous(
+    breaks = pretty_breaks(),
+    expand = expansion(.025)
+  ) +
+  geom_blank() +
+    stat_halfeye(
+    alpha = .33,
+    height = .02,
+    normalize = "panels", 
+    adjust = 1.1,
+    point_interval = NULL, 
+    show.legend = FALSE,
+    #position = position_nudge(x = .05)
+  ) +
+  # only the outline (hackish)
+    stat_halfeye(
+    alpha = 1,
+    height = .02,
+    normalize = "panels", 
+    aes(slab_color = Game),
+    slab_size = 0.5,
+    fill = NA,
+    adjust = 1.1,
+    point_interval = NULL, 
+    show.legend = FALSE,
+    #position = position_nudge(x = .05)
+  ) +
+  stat_summary(
+    fun.data = mean_cl_normal, 
+    fatten = 1.25
+  ) +
+  geom_line(
+      data = tmp_wave_mean,
+      aes(y = y, group = NA)
+  ) +
+  facet_grid(name ~ Game, scales = "free_y") +
+  labs(y = "Value") +
+  guides(color = guide_legend(nrow = 2, byrow = TRUE)) +
+  theme(
+      legend.position = "bottom",
+      legend.title = element_blank()
+    )
+ggsave(here("Output/Figures/Figure-1-2.png"), width = 5, height = 6)
+
+```
+
+
+# Bivariate relations
 ```{r}
 d %>%
   select(
@@ -752,6 +832,40 @@ last_plot()$data %>%
   tabyl(too_great) %>%
   adorn_pct_formatting()
 ```
+
+### Kristoffer's alternative plot
+I'd also facet this one, and use LOESS.
+
+```{r}
+d_riclpm_plots %>% 
+  filter(x_var == "Hours", lag_x <= 5) %>% 
+  ggplot(aes(lag_x, y, col = Game)) +
+  scale_x_continuous(
+    "Hours played at previous wave",
+    breaks = pretty_breaks()
+  ) +
+  scale_y_continuous(
+    "Well-being at current wave",
+    breaks = pretty_breaks()
+  ) +
+  scale_color_brewer(palette = "Set1", aesthetics = c("color", "fill")) +
+  geom_point(size = .2, alpha = .2, shape = 1) +
+  geom_smooth(
+    method = "loess", size = .9,
+    color = "black",
+    alpha = .2, show.legend = FALSE
+  ) +
+  guides(
+    color = guide_legend(
+      override.aes = list(size = 2, shape = 16, alpha = 1)
+    )
+  ) +
+  facet_grid(Panel_label ~ Game, scales = "free_y") +
+  #scale_x_continuous(trans = "log1p", breaks = c(0, 1,  5, 20, 60)) +
+  theme(aspect.ratio = 1)
+ggsave(here("Output/Figures/Figure-2-1-raw.png"), width = 6, height = 5)
+```
+
 
 ## Fit one model to all data
 
