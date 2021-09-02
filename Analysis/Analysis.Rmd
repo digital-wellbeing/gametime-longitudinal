@@ -925,7 +925,7 @@ pars_riclpm_mg <- fit_riclpm_mg %>%
       ~ left_join(
         .x, 
         tibble(
-          group = 1:length(unique(d_riclpm$Game)), 
+          group = 1:length(unique(d_riclpm_wide$Game)), 
           Game = .y@Data@group.label
         )
       )
@@ -977,7 +977,7 @@ pars_riclpm %>%
 # Plots of covariance parameters (raw)
 last_plot() %+% 
   filter(
-    pars_riclpm, 
+    pars_riclpm %>% rename(Predictor = x_var, Outcome = y_var), 
     Type == "Unstandardized", 
     str_detect(Parameter, " ~~ ")
   )
