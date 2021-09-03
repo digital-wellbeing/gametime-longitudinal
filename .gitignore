@@ -46,6 +46,7 @@ Data/
 
 # Output
 Output/Analysis_files/
+Output/descriptive_files/
 Output/*.html
 Output/Figures/*.png
 Output/brms/*.rds
