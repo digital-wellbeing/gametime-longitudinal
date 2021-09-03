@@ -45,9 +45,17 @@ library(riclpmr)
 library(ggnewscale)
 library(showtext)
 library(tidyverse)
+library(multidplyr)
 ```
 
 ```{r setup, include=FALSE}
+
+# parallel computations
+cluster <- new_cluster(8)
+# load packages on clusters
+cluster_library(cluster, c("dplyr", "lavaan"))
+
+
 # Knitr options
 opts_chunk$set(
   echo = FALSE,
@@ -71,7 +79,7 @@ theme_set(
     )
 )
 # MCMC settings
-options(mc.cores = parallel::detectCores(logical = FALSE))
+options(mc.cores = 1)
 if (require("cmdstanr")) options(brms.backend = "cmdstanr")
 
 # Run this to delete fitted models and refit
@@ -513,8 +521,10 @@ riclpm_constrained <- "
 ```
 
 ```{r}
+cluster_copy(cluster, "riclpm_constrained")
 fit_riclpm_all <- d_riclpm_wide %>%
   group_by(y_var, x_var) %>%
+  partition(cluster) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained,
@@ -523,7 +533,7 @@ fit_riclpm_all <- d_riclpm_wide %>%
       meanstructure = TRUE,
       int.ov.free = TRUE
     ) %>% list()
-  )
+  ) %>% collect()
 
 get_lavaan_pars <- function(x) {
   bind_rows(
@@ -549,6 +559,7 @@ Fit the above model separately to each game.
 ```{r}
 fit_riclpm_sep <- d_riclpm_wide %>%
   group_by(y_var, x_var, Game) %>%
+  partition(cluster) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained,
@@ -557,7 +568,7 @@ fit_riclpm_sep <- d_riclpm_wide %>%
       meanstructure = TRUE,
       int.ov.free = TRUE
     ) %>% list()
-  )
+  ) %>% collect()
 pars_riclpm_sep <- fit_riclpm_sep %>%
   mutate(pars = map(fit, get_lavaan_pars)) %>%
   select(-fit)
@@ -613,8 +624,10 @@ riclpm_constrained_multigroup <- "
 ```
 
 ```{r}
+cluster_copy(cluster, "riclpm_constrained_multigroup")
 fit_riclpm_mg <- d_riclpm_wide %>%
   group_by(y_var, x_var) %>%
+  partition(cluster) %>%
   summarise(
     fit = lavaan(
       riclpm_constrained_multigroup,
@@ -624,7 +637,7 @@ fit_riclpm_mg <- d_riclpm_wide %>%
       meanstructure = TRUE,
       int.ov.free = TRUE
     ) %>% list()
-  )
+  ) %>% collect()
 
 pars_riclpm_mg <- fit_riclpm_mg %>%
   mutate(pars = map(fit, get_lavaan_pars)) %>%
@@ -733,8 +746,12 @@ fit_ma_empty <- brm(
 
 # Fit meta-analysis separately to each x-y pair X parameter X type 
 # by updating the compiled model (48 meta-analyses)
+cluster_library(cluster, c("brms", "here", "stringr"))
+cluster_copy(cluster, "fit_ma_empty")
 fit_ma <- d_ma %>%
   group_by(x_var, y_var, Parameter, lhs, rhs, Type) %>%
+  mutate(i = cur_group_id()) %>%
+  partition(cluster) %>%
   summarise(
     fit = list(
       update(
@@ -743,10 +760,11 @@ fit_ma <- d_ma %>%
         control = list(adapt_delta = .9999, max_treedepth = 15),
         iter = 15000, warmup = 5000, 
         refresh = 0,
-        file = here(str_glue("Output/brms/brm-ma-{cur_group_id()}"))
+        file = here(str_glue("Output/brms/brm-ma-{unique(i)}"))
       )
     )
-  )
+  ) %>% 
+  collect()
 
 # Function to get varying and average effects' posteriors from brmsfit
 get_ma_post <- function(x) {
