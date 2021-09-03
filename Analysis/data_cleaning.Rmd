@@ -1,0 +1,283 @@
+---
+title: "Data cleaning"
+author:
+  - name: <a href="https://vuorre.netlify.app">Matti Vuorre</a>
+    affiliation: <a href="https://www.oii.ox.ac.uk/people/matti-vuorre/">University of Oxford</a>
+  - name: Your Name Here
+    affiliation: University
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    theme: yeti
+    highlight: kate
+    self_contained: true
+    number_sections: false
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+---
+
+```{r packages, include = FALSE}
+library(knitr)
+library(scales)
+library(janitor)
+library(ggbeeswarm)
+library(gtsummary)
+library(bayestestR)
+library(brms)
+library(tidybayes)
+library(broom)
+library(here)
+library(lubridate)
+library(naniar)
+library(ggtext)
+library(emmeans)
+library(ggstance)
+library(ggdist)
+library(patchwork)
+library(readxl)
+library(lavaan)
+library(GGally)
+# remotes::install_github("jflournoy/riclpmr")  
+library(riclpmr)
+library(ggnewscale)
+library(showtext)
+library(tidyverse)
+```
+
+```{r setup, include=FALSE}
+# Knitr options
+opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  cache = TRUE,
+  error = FALSE,
+  message = FALSE,
+  fig.align = "center",
+  fig.retina = 2
+)
+```
+
+# Preface
+
+This document contains the analyses supporting "A longitudinal study of video game play and well-being" <doi>
+
+# Data cleaning
+
+## Survey
+
+We first cleaned the raw qualtrics data of sensitive info and placed the resulting table in `Data/qualtrics.csv`. We proceed now to clean that file.
+
+- We only include people at each wave if they answered at least one question in that wave
+
+```{r}
+d <- read_csv(here("Data", "qualtrics.csv"))
+
+# Rename block & item order variables for easier processing
+d <- d %>%
+  rename(
+    .spane = spane_DO,
+    .pens = pens_needs_DO,
+    .blocks1 = FL_20_DO,
+    .blocks2 = FL_22_DO
+  )
+
+# Take out rows (1 row = 1 participant's responses at one wave)
+# where no survey questions answered; this defines a "participant"
+d$responses <- apply(
+  select(d, starts_with("spane_"), starts_with("pens_"), csas), 1,
+  function(x) sum(!is.na(x))
+)
+d <- d %>%
+  filter(responses > 0) %>%
+  select(-responses)
+
+# Has played?
+d <- d %>%
+  mutate(played = !str_detect(played, "NOT"))
+
+# Estimated time played
+d <- d %>%
+  mutate(minutes = minutes / 60) %>%
+  mutate(hours_est = rowSums(select(., hours, minutes), na.rm = TRUE)) %>%
+  # sum above returns 0 if both hours and minutes are NA, fix here:
+  mutate(hours_est = ifelse(is.na(hours) & is.na(minutes), NA, hours_est)) %>%
+  select(-minutes, -hours)
+
+# Scale responses
+d <- d %>%
+  mutate(
+    across(
+      starts_with("spane_"),
+      function(x) factor(x, levels = c("Very rarely or never", "Rarely", "Occasionally", "Sometimes", "Frequently", "Often", "Very often or always"))
+    )
+  )
+d <- d %>%
+  mutate(
+    across(
+      starts_with("pens_"),
+      function(x) factor(x, levels = c("Strongly disagree", "Disagree", "Somewhat disagree", "Neither agree nor disagree", "Somewhat agree", "Agree", "Strongly agree"))
+    )
+  )
+d <- d %>%
+  mutate(
+    across(c(starts_with("spane_"), starts_with("pens_")), as.numeric)
+  )
+
+# Reverse scored items
+reverse_items <- c("pens_needs_9", "pens_motivations_2", "pens_motivations_3")
+d <- d %>%
+  mutate(
+    across(all_of(reverse_items), ~ 8 - .x)
+  )
+
+# Subscale items
+spane_pos_items <- paste0("spane_", c(1, 3, 5, 7, 10, 12))
+spane_neg_items <- paste0("spane_", c(2, 4, 6, 8, 9, 11))
+autonomy_items <- paste0("pens_needs_", 1:3)
+competence_items <- paste0("pens_needs_", 4:6)
+relatedness_items <- paste0("pens_needs_", 7:9)
+enjoyment_items <- paste0("pens_motivations_", 1:4)
+extrinsic_items <- paste0("pens_motivations_", 5:8)
+
+# Create scale scores
+d <- d %>%
+  mutate(
+    spane_pos = rowMeans(select(., all_of(spane_pos_items)), na.rm = TRUE),
+    spane_neg = rowMeans(select(., all_of(spane_neg_items)), na.rm = TRUE),
+    spane = spane_pos - spane_neg,
+    enjoyment = rowMeans(select(., all_of(enjoyment_items)), na.rm = TRUE),
+    extrinsic = rowMeans(select(., all_of(extrinsic_items)), na.rm = TRUE),
+    needs = rowMeans(
+      select(., all_of(c(autonomy_items, competence_items))),
+      na.rm = TRUE
+    ),
+    autonomy = rowMeans(select(., all_of(autonomy_items)), na.rm = TRUE),
+    competence = rowMeans(select(., all_of(competence_items)), na.rm = TRUE),
+    relatedness = rowMeans(select(., all_of(relatedness_items)), na.rm = TRUE),
+  )
+
+# Remove items
+d <- d %>%
+  select(-all_of(c(spane_pos_items, spane_neg_items, autonomy_items, competence_items, relatedness_items, enjoyment_items, extrinsic_items)))
+
+
+# Make wave a nicely labelled factor
+d <- d %>%
+  mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
+
+# Abbreviate long game names
+d <- d %>%
+  mutate(
+    game = ifelse(game == "Animal Crossing: New Horizons", "AC:NH", game)
+  )
+
+# Gender as factor
+d <- d %>%
+  mutate(gender = factor(gender))
+
+# Calculate interval between waves
+survey_intervals <- d %>%
+  select(game, pid, wid, StartDate) %>%
+  arrange(pid, wid) %>%
+  # Make sure that there is a row for each subject X wave 
+  # so interval is calculated correctly
+  complete(wid, nesting(pid, game)) %>%
+  arrange(pid, wid) %>%
+  group_by(pid) %>%
+  # Interval between waves in days
+  mutate(
+    interval = (as.numeric(StartDate) - as.numeric(lag(StartDate))) / 60 / 60 / 24
+  ) %>%
+  ungroup() %>%
+  select(wid, pid, game, interval)
+d <- left_join(d, survey_intervals)
+
+# Prettier names for tables/figures
+d <- d %>%
+  rename_with(
+    str_to_upper,
+    c(starts_with("spane"), csas)
+  ) %>%
+  rename_with(
+    str_to_title,
+    c(age, gender, experience, game, company, enjoyment:interval)
+  )
+```
+
+## Telemetry
+
+### EA
+
+This data is at the player by match level: Each row indicates the start and end time of a match for that particular player.
+
+Note there's a lot of information in this table but we only use the session times.
+
+todo I think this allows for a telemetry observation to count for two surveys if their interval was shorter than 14 days but that is okay because survey asked for prior two weeks, or is it? Maybe or maybe not.
+
+```{r}
+telemetry_ea <- read_csv(here("Data", "telemetry_ea.csv"))
+
+# Select relevant variables
+telemetry_ea <- telemetry_ea %>%
+  select(
+    pid, game_start_time_utc, game_end_time_utc
+  ) %>%
+  transmute(
+    pid,
+    game_start = as_datetime(mdy_hm(game_start_time_utc), tz = "UTC"),
+    game_end = as_datetime(mdy_hm(game_end_time_utc), tz = "UTC")
+  )
+
+# Include only matches that happened in the two weeks prior to each survey
+telemetry_ea <- telemetry_ea %>%
+  left_join(
+    d %>%
+      filter(Game == "Apex Legends") %>%
+      select(pid, wid, StartDate)
+  ) %>%
+  # Is in window if match started or ended in the fourteen days prior to survey
+  filter(
+    game_start %within% interval(StartDate - days(14), StartDate) |
+      game_end %within% interval(StartDate - days(14), StartDate)
+  )
+
+
+# Calculate durations
+telemetry_ea <- telemetry_ea %>%
+  mutate(Hours = as.numeric(game_end - game_start) / 60 / 60)
+
+# Summarise per wave
+telemetry_ea <- telemetry_ea %>%
+  group_by(pid, wid) %>%
+  summarise(Hours = sum(Hours)) %>%
+  ungroup()
+
+# Join back to survey data
+d <- left_join(d, telemetry_ea)
+
+# If telemetry was not obtained, participant didn't play and therefore gets 0
+# instead of NA. This is easier to do once all data is in.
+d <- d %>%
+  mutate(Hours = ifelse(Game == "Apex Legends" & is.na(Hours), 0, Hours))
+```
+
+### CCP
+
+### Microsoft
+
+### Square Enix
+
+### Sony
+
+Session end times not logged.
+
+### Ubisoft
+
+
+Save cleaned data
+```{r}
+saveRDS(d, file = here("Data/cleaned_data.Rds"))
+```
