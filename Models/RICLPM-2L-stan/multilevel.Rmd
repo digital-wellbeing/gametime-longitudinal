@@ -1,5 +1,5 @@
 ---
-title: "Multilevel RICLPM in Stan"
+title: "Multilevel RICLPM in Stan vs lavaan multigroup + meta-analysis"
 author: "Kristoffer Magnusson"
 date: "`r Sys.Date()`"
 output: html_document
@@ -9,12 +9,14 @@ output: html_document
 knitr::opts_chunk$set(cache = TRUE)
 library(blavaan)
 library(lavaan)
+library(brms)
 library(tidyverse)
+library(multidplyr)
 library(here)
 library(knitr)
 ```
 
-In this document I try to fit a multilevel RICLPM using custom stan code (based on a blavaan model). 
+In this document I try to fit a multilevel RICLPM using custom stan code (based on a blavaan model), I then compare it to the multigroup lavaan + random effects meta-analysis approach.
 
 ## Simulate data
 Let's simulate a multilevel version of the RICLPM. We'll do 10 games and 50 participants per game. I'll add random effects to the within regression coefs only. All other parameters are shared by all games.  
@@ -175,17 +177,6 @@ fit <- readRDS(here("Models/RICLPM-2L-stan/fit_ML.rds"))
 ```
 
 
-Let's look at the key parameters
-
-* beta[1] = beta_x, x <- x
-* beta[2] = gamma_x, x <- y
-* beta[3] = gamma_y, y <- x
-* beta[4] = beta_y, y <- y
-
-* psifree[1:2] random intercepts
-* psifree[3:8] ws latent variances
-
-* sd_1[1:4] = game-level random effects for beta[1:4]
 ```{r}
 coef_sum <- fit$summary(
   c(
@@ -201,10 +192,153 @@ coef_sum <- fit$summary(
 kable(coef_sum, digits = 2)  
 ```
 
+## Multigroup + meta-analyze approach 
+Let's also fit a multigroup model in lavaan, where only the within latent regressions are free to vary. This is similar to the Stan model, and the DGP.
+
+```{r}
+riclpm_constrained_multigroup <- "
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained)
+  # such that each group gets their own coefs
+  wx2 ~ c(bx1, bx2, bx3, bx4, bx5, bx6, bx7, bx8, bx9, bx10)*wx1 + c(gx1, gx2, gx3, gx4, gx5, gx6, gx7, gx8, gx9, gx10)*wy1
+  wy2 ~ c(gy1, gy2, gy3, gy4, gy5, gy6, gy7, gy8, gy9, gy10)*wx1 + c(by1, by2, by3, by4, by5, by6, by7, by8, by9, by10)*wy1
+  wx3 ~ c(bx1, bx2, bx3, bx4, bx5, bx6, bx7, bx8, bx9, bx10)*wx2 + c(gx1, gx2, gx3, gx4, gx5, gx6, gx7, gx8, gx9, gx10)*wy2
+  wy3 ~ c(gy1, gy2, gy3, gy4, gy5, gy6, gy7, gy8, gy9, gy10)*wx2 + c(by1, by2, by3, by4, by5, by6, by7, by8, by9, by10)*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+"
+```
+
+```{r}
+fit_multi = lavaan(
+      riclpm_constrained_multigroup,
+      data = d,
+      group = "cluster",
+      group.equal = c(
+          "residuals", 
+          "residual.covariances",
+          "lv.variances", 
+          "lv.covariances"),
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    )
+```
+
+```{r}
+get_lavaan_pars <- function(x) {
+  bind_rows(
+    parameterestimates(x) %>%
+      mutate(Type = "Unstandardized"),
+    standardizedsolution(x) %>%
+      rename(est = est.std) %>%
+      mutate(Type = "Standardized")
+  ) %>%
+    as_tibble() %>%
+    unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE)
+}
+
+pars_riclpm_mg <- get_lavaan_pars(fit_multi) 
+
+
+```
+
+Run the coefficients through a random effects meta-analysis.
+
+```{r results='hide'}
+# Meta-analyze the models fitted independently to games
+# Select these parameters only
+d_ma <- pars_riclpm_mg %>%
+  filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>%
+  filter(Parameter %in% c("wx2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wy2 ~ wx1"))
+
+# Compile meta-analytic brms/Stan model
+bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | group))
+fit_ma_empty <- brm(
+  bf_ma,
+  data = d_ma,
+  prior = prior(student_t(7, 0, 0.25), class = "sd", group = "group") +
+    prior(normal(0, 0.5), class = "b"),
+  chains = 0,
+  control = list(adapt_delta = .9999, max_treedepth = 15),
+  file = here("Models/RICLPM-2L-stan/brms/brm-ma-empty")
+)
+
+cluster <- new_cluster(4)
+cluster_library(cluster, c("dplyr", "brms", "here", "stringr"))
+cluster_copy(cluster, "fit_ma_empty")
+fit_ma <- d_ma %>%
+  group_by(Parameter) %>%
+  mutate(i = cur_group_id()) %>%
+  partition(cluster) %>%
+  summarise(
+    fit = list(
+      update(
+        fit_ma_empty,
+        newdata = cur_data(),
+        control = list(adapt_delta = .9999, max_treedepth = 15),
+        iter = 15000, warmup = 5000, 
+        refresh = 0,
+        file = here(str_glue("Models/RICLPM-2L-stan/brms/brm-ma-{unique(i)}"))
+      )
+    )
+  ) %>% 
+  collect()
+
+```
+
 ## Plots results
+Let's look at the key parameters
+
+* beta[1] = beta_x, x <- x
+* beta[2] = gamma_x, x <- y
+* beta[3] = gamma_y, y <- x
+* beta[4] = beta_y, y <- y
+
+* psifree[1:2] random intercepts
+* psifree[3:8] ws latent variances
+
+* sd_1[1:4] = game-level random effects for beta[1:4]
+
 Plot estimates + 95% CIs vs true parameters values.
 ```{r, echo = FALSE}
 tmp <- coef_sum %>% filter(grepl("^beta", variable))
+
+# Fixed effects
+tmp_multi <- data.frame(
+    variable = paste0("betafree[", 1:4, "]"),
+    map_df(fit_ma$fit, function(x) posterior_summary(x)[1, ])
+)
 
 # use the mean of the sampled effects as true value
 tmp$theta <- d %>% 
@@ -215,8 +349,22 @@ ggplot(
     tmp,
     aes(mean, variable)
     ) + 
-    geom_point(aes(color = "est")) +
-    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "est")) +
+    geom_point(aes(color = "RICLPM-2L-Stan")) +
+    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "RICLPM-2L-Stan")) +
+    geom_point(
+        data = tmp_multi, 
+        aes(x = Estimate, color = "lavaan multi + MA"),
+        position = position_nudge(y = -0.1)
+        ) +
+    geom_linerange(
+        data = tmp_multi, 
+        aes(
+            x = Estimate, 
+            xmin = `Q2.5`,
+            xmax = `Q97.5`, 
+            color = "lavaan multi + MA"),
+        position = position_nudge(y = -0.1)
+        ) +
     geom_point(aes(x = theta, color = "true value")) +
     labs(
         title = "Latent within effects", 
@@ -224,6 +372,49 @@ ggplot(
     )
 ```
 
+```{r, echo = FALSE}
+tmp3 <- coef_sum %>% filter(grepl("^sd", variable))
+tmp3$theta <- with(
+    params, 
+    c(
+        beta_x_sd, gamma_x_sd, 
+        gamma_y_sd, beta_y_sd
+    )
+)
+
+tmp_multi <- data.frame(
+    variable = paste0("sd_1[", 1:4, "]"),
+    map_df(fit_ma$fit, function(x) posterior_summary(x)[2, ])
+)
+
+ggplot(
+    tmp3,
+        aes(mean, variable)
+    ) + 
+    geom_point(aes(color = "RICLPM-2L-Stan")) +
+    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "RICLPM-2L-Stan")) +
+    geom_point(
+        data = tmp_multi, 
+        aes(x = Estimate, color = "lavaan multi + MA"),
+        position = position_nudge(y = -0.1)
+        ) +
+    geom_linerange(
+        data = tmp_multi, 
+        aes(
+            x = Estimate, 
+            xmin = `Q2.5`,
+            xmax = `Q97.5`, 
+            color = "lavaan multi + MA"),
+        position = position_nudge(y = -0.1)
+        ) +
+    geom_point(aes(x = theta, color = "true value")) +
+    labs(
+        title = "Game-level random effects (betas)", 
+        subtitle = "linerange = 95% CI"
+    )
+```
+
+I didn't meta-analyze the random intercepts, so this is only the Stan two-level model.
 ```{r, echo = FALSE}
 tmp2 <- coef_sum %>% filter(grepl("^psi", variable))
 tmp2$theta <- with(
@@ -249,34 +440,18 @@ ggplot(
     )
 ```
 
-```{r, echo = FALSE}
-tmp3 <- coef_sum %>% filter(grepl("^sd", variable))
-tmp3$theta <- with(
-    params, 
-    c(
-        beta_x_sd, gamma_x_sd, 
-        gamma_y_sd, beta_y_sd
-    )
-)
-
-ggplot(
-    tmp3,
-    aes(mean, variable)
-    ) + 
-    geom_point(aes(color = "est")) +
-    geom_linerange(aes(xmin = `2.5%`, xmax = `97.5%`, color = "est")) +
-    geom_point(aes(x = theta, color = "true value")) +
-    labs(
-        title = "Game-level random effects (betas)", 
-        subtitle = "linerange = 95% CI"
-    )
-```
-
 ## Conclusions
+**Stan model**
+
 - These results are pretty promising
-- Sampling is inefficient, but feasible
+- Sampling is inefficient, probably too slow for large data.
 - Should probably use correlated random effects
 - Let more parameters vary by game?
 - Should check if SEs/CIs are correct
     - Slow simulation
-- Try with real data?
+
+**Lavaan multigroup + MA**
+
+- Point ests are pretty close to stan model, but SEs are narrower.
+- Should run a simulation to check the CIs for this model, wouldn't take too long.
+- This approach is much more feasible compared to the Stan model
