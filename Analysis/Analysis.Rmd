@@ -777,13 +777,44 @@ get_ma_post <- function(x) {
 }
 ```
 
+Also run meta-analysis for multigroup models
+
+```{r results='hide'}
+d_ma_multi <- pars_riclpm %>%
+  filter(Model == "Multigroup", str_detect(Parameter, " ~ "))
+
+fit_ma_multi <- d_ma_multi %>%
+  group_by(x_var, y_var, Parameter, lhs, rhs, Type) %>%
+  mutate(i = cur_group_id()) %>%
+  partition(cluster) %>%
+  summarise(
+    fit = list(
+      update(
+        fit_ma_empty,
+        newdata = cur_data(),
+        control = list(adapt_delta = .9999, max_treedepth = 15),
+        iter = 15000, warmup = 5000, 
+        refresh = 0,
+        file = here(str_glue("Output/brms/brm-ma-multi-{unique(i)}"))
+      )
+    )
+  ) %>% 
+  collect()
+```
+
 ## Hours <-> WB
 
 Draw a forest plot of meta-analyses with hours
 
 ```{r}
-# Create nicer labels for variables and panels
-Order <- distinct(fit_ma, x_var, y_var, Parameter, lhs, rhs) %>% 
+#' Summarize meta-analyses
+#' @param object a grouped df with all the brmsfits; e.g., fit_ma
+#' 
+#' @return a list with 
+#'  - `summary`:
+#'  - `draws`: the posterior draws
+summarize_ma <- function(object) {
+  Order <- distinct(object, x_var, y_var, Parameter, lhs, rhs) %>% 
   ungroup() %>% 
   # Meta-analyses only for regression parameters
   filter(str_detect(Parameter, " ~ ")) %>% 
@@ -816,70 +847,84 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter, lhs, rhs) %>%
     ) %>% 
   arrange(Parameter_order, desc(y_var)) %>% 
   mutate(Panel_label = fct_inorder(Panel_label))
-# Did ordering work?
-# Order %>% 
-#   filter(x_var == "Enjoyment", Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")) %>% 
-#   mutate(n = as.numeric(Panel_label))
+  # Did ordering work?
+  # Order %>% 
+  #   filter(x_var == "Enjoyment", Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")) %>% 
+  #   mutate(n = as.numeric(Panel_label))
 
-# Table of ROPEs
-# Smallest subjective change as a percentage from Anvari&Lakens
-sscp <- .2 / 5
-rope_limits <- distinct(fit_ma, y_var, Parameter, Type) %>%
-  mutate(
-    rope_limit = case_when(
-      Type == "Standardized" ~ .1,
-      Type == "Unstandardized" & Parameter == "wx2 ~ wy1" ~ .1,
-      y_var == "CSAS" ~ (sscp * 11) / 3,
-      y_var == "SPANE" ~ (sscp * 13) / 3
+  # Table of ROPEs
+  # Smallest subjective change as a percentage from Anvari&Lakens
+  sscp <- .2 / 5
+  rope_limits <- distinct(object, y_var, Parameter, Type) %>%
+    mutate(
+      rope_limit = case_when(
+        Type == "Standardized" ~ .1,
+        Type == "Unstandardized" & Parameter == "wx2 ~ wy1" ~ .1,
+        y_var == "CSAS" ~ (sscp * 11) / 3,
+        y_var == "SPANE" ~ (sscp * 13) / 3
+      )
     )
-  )
 
-# Data for plotting meta-analyses' posterior distributions
-p_data <- fit_ma %>%
-  mutate(out = map(fit, get_ma_post)) %>%
-  select(-fit) %>%
-  unnest(out) %>%
-  rename(Average = Intercept) %>%
-  pivot_longer(`AC:NH`:Average, names_to = "Game") %>%
-  mutate(Game = fct_relevel(Game, "Average")) %>%
-  ungroup() %>%
-  left_join(Order) %>% 
-  left_join(rope_limits)
+  # Data for plotting meta-analyses' posterior distributions
+  p_data <- object %>%
+    mutate(out = map(fit, get_ma_post)) %>%
+    select(-fit) %>%
+    unnest(out) %>%
+    rename(Average = Intercept) %>%
+    pivot_longer(`AC:NH`:Average, names_to = "Game") %>%
+    mutate(Game = fct_relevel(Game, "Average")) %>%
+    ungroup() %>%
+    left_join(Order) %>% 
+    left_join(rope_limits)
 
-# Summaries of posterior distributions
-fit_ma_sum <- p_data %>%
-  left_join(rope_limits) %>%
-  group_by(y_var, x_var, Parameter, Type, Game, Panel_label, rope_limit) %>%
-  summarise(
-    describe_posterior(
-      value,
-      rope_range = c(-unique(rope_limit), unique(rope_limit)),
-      test = c("ps", "rope"), rope_ci = 1,
-      centrality = "mean"
-    ) %>% select(-Parameter)
-  ) %>%
-  ungroup() %>%
-  mutate(
-    across(
-      c(Mean, CI_low, CI_high),
-      .fns = list(r = ~ format(round(., 2), nsmall = 2))
-    )
-  ) %>%
-  mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]")) %>%
-  # Probability outside ROPE in other direction
-  mutate(p_other = 1 - (ps + ROPE_Percentage)) %>%
-  # Ordered labels
-  left_join(Order) %>%
-  mutate(Game = fct_relevel(Game, "Average"))
+  # Summaries of posterior distributions
+  fit_ma_sum <- p_data %>%
+    left_join(rope_limits) %>%
+    group_by(y_var, x_var, Parameter, Type, Game, Panel_label, rope_limit) %>%
+    summarise(
+      describe_posterior(
+        value,
+        rope_range = c(-unique(rope_limit), unique(rope_limit)),
+        test = c("ps", "rope"), rope_ci = 1,
+        centrality = "mean"
+      ) %>% select(-Parameter)
+    ) %>%
+    ungroup() %>%
+    mutate(
+      across(
+        c(Mean, CI_low, CI_high),
+        .fns = list(r = ~ format(round(., 2), nsmall = 2))
+      )
+    ) %>%
+    mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]")) %>%
+    # Probability outside ROPE in other direction
+    mutate(p_other = 1 - (ps + ROPE_Percentage)) %>%
+    # Ordered labels
+    left_join(Order) %>%
+    mutate(Game = fct_relevel(Game, "Average"))
 
-# Function to draw forest plots
+  list(
+    summary = fit_ma_sum,
+    draws = p_data
+   )
+}
+
+#' Function to draw forest plots
+#' @param object object created using `summarize_ma`
+#' @param type
+#' @param x_var
+#' @param parameters
+#' @param lavaan
+#' 
+#' @return a ggplot2 object
 forest_plot <- function(
+  object,
   type = "Unstandardized", 
   x_var = "Hours", 
   parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
   lavaan = FALSE
   ) {
-  out <- fit_ma_sum %>%
+  out <- object$summary %>%
     filter(
       Type == {{type}}, 
       x_var == {{x_var}}, 
@@ -913,7 +958,7 @@ forest_plot <- function(
     ) +
     # Posterior densities
     stat_halfeye(
-      data = p_data %>% 
+      data = object$draws %>% 
         filter(
           Type == {{type}}, 
           x_var == {{x_var}}, 
@@ -940,7 +985,7 @@ forest_plot <- function(
     ) +
     # Posterior probabilities for average
     geom_text(
-      data = fit_ma_sum %>%
+      data = object$summary %>%
         filter(Game == "Average") %>%
         filter(
           Type == {{type}}, 
@@ -958,7 +1003,7 @@ forest_plot <- function(
       show.legend = FALSE
     ) +
     geom_text(
-      data = fit_ma_sum %>%
+      data = object$summary %>%
         filter(Game == "Average") %>%
         filter(
           Type == {{type}}, 
@@ -976,7 +1021,7 @@ forest_plot <- function(
       show.legend = FALSE
     ) +
     geom_text(
-      data = fit_ma_sum %>%
+      data = object$summary %>%
         filter(Game == "Average") %>%
         filter(
           Type == {{type}}, 
@@ -1016,9 +1061,14 @@ forest_plot <- function(
         aes(x = est, xmin = ci.lower, xmax = ci.upper),
         position = position_nudge(y = -.075)
       )
-  } else {out}
+  } else out
 }
+```
+
+```{r}
+fit_ma_sum <- summarize_ma(fit_ma)
 forest_plot(
+  fit_ma_sum,
   "Unstandardized", 
   "Hours",
   parameters = c("wy2 ~ wx1", "wx2 ~ wy1"), 
@@ -1029,9 +1079,23 @@ ggsave(here("Output/Figures/Figure-3-Unstandardized.png"), width = 8, height = 5
 # ggsave(here("Output/Figures/Figure-3-Standardized.png"), width = 8, height = 5)
 ```
 
+Multigroup model
+
+```{r}
+fit_ma_multi_sum <- summarize_ma(fit_ma_multi)
+forest_plot(
+  fit_ma_multi_sum,
+  "Unstandardized", 
+  "Hours",
+  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"), 
+  lavaan = FALSE
+)
+```
+
 ```{r}
 # Also see in comparison to individual model estimates
 forest_plot(
+  fit_ma_sum,
   "Unstandardized", 
   "Hours",
   parameters = c("wy2 ~ wx1", "wx2 ~ wy1"), 
@@ -1042,7 +1106,7 @@ forest_plot(
 Table?
 
 ```{r}
-fit_ma_sum %>%
+fit_ma_sum$summary %>%
   select(y_var, x_var, Game, Parameter, Type, Res) %>% 
   DT::datatable(filter = "top")
 ```
@@ -1054,12 +1118,14 @@ These meta-analyses were conducted above. Now we just need to filter for the cor
 
 ```{r}
 forest_plot(
+  fit_ma_sum,
   "Unstandardized", 
   "Enjoyment",
   parameters = c("wy2 ~ wx1"), 
   lavaan = FALSE
 ) + theme(axis.title.x = element_blank()) -
 forest_plot(
+  fit_ma_sum,
   "Unstandardized", 
   "Needs",
   parameters = c("wy2 ~ wx1"), 
