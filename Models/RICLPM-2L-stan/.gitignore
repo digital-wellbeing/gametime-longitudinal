@@ -2,3 +2,6 @@ fit_ML.rds
 lavExportStanML/semML
 multilevel_files/
 brms/
+sim_res/
+lavExportStanML/sem.stan
+lavExportStanML/semstan.rda
