@@ -16,7 +16,7 @@ library(here)
 library(knitr)
 ```
 
-In this document I try to fit a multilevel RICLPM using custom stan code (based on a blavaan model), I then compare it to the multigroup lavaan + random effects meta-analysis approach.
+In this document I try to fit a multilevel RICLPM using custom stan code (based on a blavaan model), I then compare it to the multigroup lavaan + random effects meta-analysis approach. At the end there's also a small simulation study of frequentist properties of the lavaan multigroup + MA approach.
 
 ## Simulate data
 Let's simulate a multilevel version of the RICLPM. We'll do 10 games and 50 participants per game. I'll add random effects to the within regression coefs only. All other parameters are shared by all games.  
@@ -259,16 +259,13 @@ fit_multi = lavaan(
 get_lavaan_pars <- function(x) {
   bind_rows(
     parameterestimates(x) %>%
-      mutate(Type = "Unstandardized"),
-    standardizedsolution(x) %>%
-      rename(est = est.std) %>%
-      mutate(Type = "Standardized")
+      mutate(Type = "Unstandardized")
   ) %>%
     as_tibble() %>%
     unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE)
 }
 
-pars_riclpm_mg <- get_lavaan_pars(fit_multi) 
+pars_riclpm_mg <- get_lavaan_pars(fit_multi)
 
 
 ```
@@ -297,23 +294,30 @@ fit_ma_empty <- brm(
 cluster <- new_cluster(4)
 cluster_library(cluster, c("dplyr", "brms", "here", "stringr"))
 cluster_copy(cluster, "fit_ma_empty")
-fit_ma <- d_ma %>%
-  group_by(Parameter) %>%
-  mutate(i = cur_group_id()) %>%
-  partition(cluster) %>%
-  summarise(
-    fit = list(
-      update(
-        fit_ma_empty,
-        newdata = cur_data(),
-        control = list(adapt_delta = .9999, max_treedepth = 15),
-        iter = 15000, warmup = 5000, 
-        refresh = 0,
-        file = here(str_glue("Models/RICLPM-2L-stan/brms/brm-ma-{unique(i)}"))
+
+run_MA <- function(data, cluster, brms_empty) {
+  fit_ma <- data %>%
+    group_by(Parameter) %>%
+    mutate(i = cur_group_id()) %>%
+    partition(cluster) %>%
+    summarise(
+      fit = list(
+        update(
+          brms_empty,
+          newdata = cur_data(),
+          control = list(adapt_delta = .9999, max_treedepth = 15),
+          iter = 15000, warmup = 5000, 
+          refresh = 0,
+        )
       )
-    )
-  ) %>% 
-  collect()
+    ) %>% 
+    collect()
+  
+  fit_ma
+}
+
+
+fit_ma <- run_MA(d_ma, cluster, fit_ma_empty)
 
 ```
 
@@ -414,7 +418,7 @@ ggplot(
     )
 ```
 
-I didn't meta-analyze the random intercepts, so this is only the Stan two-level model.
+I didn't meta-analyze the random intercepts and latent variances, so this is only the Stan two-level model.
 ```{r, echo = FALSE}
 tmp2 <- coef_sum %>% filter(grepl("^psi", variable))
 tmp2$theta <- with(
@@ -440,6 +444,108 @@ ggplot(
     )
 ```
 
+## Simulation study: lavaan multigroup + MA
+Now let's do a quick Monte Carlo simulation of the whole lavaan multigroup + MA pipeline, using the random effects DGP (laten within regression vary by game).
+```{r, include = FALSE}
+one_simulation <- function(i = 1) {
+  cat(i, " ")
+  d <- do.call(sim_RICLPM_data, params)
+  fit_multi <- lavaan(
+      riclpm_constrained_multigroup,
+      data = d,
+      group = "cluster",
+      group.equal = c(
+          "residuals", 
+          "residual.covariances",
+          "lv.variances", 
+          "lv.covariances"),
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    )
+  pars_riclpm_mg <- get_lavaan_pars(fit_multi)
+  d_ma <- pars_riclpm_mg %>%
+    filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>%
+    filter(Parameter %in% c("wx2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wy2 ~ wx1"))
+  fit_ma <- run_MA(d_ma, cluster, fit_ma_empty)
+
+  sum_fixed <- data.frame(
+      variable = paste0("betafree[", 1:4, "]"),
+      map_df(fit_ma$fit, function(x) posterior_summary(x)[1, ])
+  )
+  sum_random <- data.frame(
+    variable = paste0("sd_1[", 1:4, "]"),
+    map_df(fit_ma$fit, function(x) posterior_summary(x)[2, ])
+  )
+
+  out <- rbind(sum_fixed, sum_random)
+  out$i <- i
+  saveRDS(
+    out, 
+    here(paste0("Models/RICLPM-2L-stan/sim_res/sim_res-", i, ".Rds"))
+  )
+  out
+}
+```
+
+500 simulations should give a Monte carlo standard error of approx 0.01 around 0.95.
+
+```{r}
+p <- 0.95
+sqrt((p * (1 - p)/500))
+```
+
+```{r}
+nsim <- 500
+# only run the simulation if they haven't all been completed already
+# there's no error handling, so just rerun this chunk if there's a crash
+n_completed_sims <- length(dir(here("Models/RICLPM-2L-stan/sim_res/")))
+if(n_completed_sims != nsim) {
+  sim_res <- map_df((n_completed_sims + 1):500, one_simulation)
+}
+```
+
+```{r}
+# load the sim results
+res_files <- dir(here("Models/RICLPM-2L-stan/sim_res/"))
+sim_res <- map_df(
+  res_files, 
+  function(file) readRDS(here("Models/RICLPM-2L-stan/sim_res/", file))
+)
+```
+
+Summarize sim results
+```{r, sim-summary}
+sim_res_sum <- sim_res %>% 
+  mutate(
+    theta = case_when(
+      variable == "betafree[1]" ~ params$beta_2x,
+      variable == "betafree[2]" ~ params$gamma_2x,
+      variable == "betafree[3]" ~ params$gamma_2y,
+      variable == "betafree[4]" ~ params$beta_2y,
+      variable == "sd_1[1]" ~ params$beta_x_sd,
+      variable == "sd_1[2]" ~ params$gamma_x_sd,
+      variable == "sd_1[3]" ~ params$gamma_y_sd,
+      variable == "sd_1[4]" ~ params$beta_y_sd
+    ),
+  ) %>%
+  group_by(variable) %>%
+  summarise(
+    "mean(est)" = mean(Estimate), 
+    theta = mean(theta),
+    "RB(est)" = (`mean(est)` - theta)/theta,
+    "mean(se)" = mean(Est.Error), 
+    "sd(est)" = sd(Estimate),
+    "RB(se)" = (`mean(se)` - `sd(est)`)/`sd(est)`,
+    CI_cover = mean(Q2.5 < theta & Q97.5 > theta)
+    )
+```
+
+```{r}
+kable(sim_res_sum, digits = 3)
+```
+
+I'd say that the model is pretty OK. 
+
 ## Conclusions
 **Stan model**
 
@@ -453,5 +559,6 @@ ggplot(
 **Lavaan multigroup + MA**
 
 - Point ests are pretty close to stan model, but SEs are narrower.
-- Should run a simulation to check the CIs for this model, wouldn't take too long.
+- <del>Should run a simulation to check the CIs for this model, wouldn't take too long.</del>
+  - Ran 500 simulations, the results are pretty OK.
 - This approach is much more feasible compared to the Stan model
