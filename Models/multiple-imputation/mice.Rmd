@@ -1,0 +1,255 @@
+---
+title: "Multiple Imputation using MICE + lavaan multigroup & meta-analysis"
+author: "Kristoffer Magnusson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+library(blavaan)
+library(lavaan)
+library(brms)
+library(tidyverse)
+library(multidplyr)
+library(here)
+library(knitr)
+library(mice)
+```
+
+This document demonstrates how multiple imputation could be added to the analysis, while still being compatible with all post-processing methods used in `Analysis.Rmd`.
+
+```{r}
+source(here("Models/RI-CLPM/simulate-RICLPM-data.R"))
+params <- list(
+    n = 50, # n per game
+    n2 = 10, # n games
+    # beta = autoregressive params
+    beta_2x = 0.66,
+    beta_2y = 0.33,
+    beta_3x = 0.66,
+    beta_3y = 0.33,
+    # gamma = cross-lagged effects
+    gamma_2x = 0.22,
+    gamma_2y = 0.55,
+    gamma_3x = 0.22,
+    gamma_3y = 0.55,
+    # multilevel
+    gamma_x_sd = 0.5,
+    gamma_y_sd = 0.5,
+    beta_x_sd = 0.5,
+    beta_y_sd = 0.5,
+    x_mean = 2,
+    y_mean = 4,
+    ## covariances
+    sd_wx1 = 1,
+    sd_wy1 = 1,
+    cor_wx1_wy1 = 0.5,
+    sd_wx2 = 1.7,
+    sd_wy2 = 1.33,
+    cor_wx2_wy2 = 0.6,
+    sd_wx3 = 1.33,
+    sd_wy3 = 1.44,
+    cor_wx3_wy3 = 0.44,
+    sd_x_RE = 1.2,
+    sd_y_RE = 1.44,
+    cor_xy_intercepts = 0.33
+)
+set.seed(4545)
+d <- do.call(sim_RICLPM_data, params)
+```
+
+## Missing Data
+Add 33% random missing per variable.
+```{r}
+missing <- lapply(
+    1:6, 
+    function(i) rbinom(nrow(d), 1, 0.33)
+  ) %>% 
+  do.call(cbind, .)
+d[, 1:6][missing == 1] <- NA
+
+apply(d[, 1:6], 2, function(x) mean(is.na(x)))
+```
+
+## Model
+```{r}
+# keep only necessary vars
+d <- select(d, x1, x2, x3, y1, y2, y3, Game = cluster)
+```
+
+### Imputation
+Use MICE to impute missing values. We'll just use the default predictor matrix for now.
+
+```{r}
+pred <- make.predictorMatrix(d)
+# remove cluster from imputation?
+pred["Game", ] <- 0
+pred[, "Game"] <- 0
+imp <- mice(d, print = FALSE, pred = pred, m = 2)
+```
+
+## Multigroup + meta-analyze approach 
+
+```{r, include = FALSE}
+riclpm_constrained_multigroup <- "
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained)
+  # such that each group gets their own coefs
+  wx2 ~ c(bx1, bx2, bx3, bx4, bx5, bx6, bx7, bx8, bx9, bx10)*wx1 + c(gx1, gx2, gx3, gx4, gx5, gx6, gx7, gx8, gx9, gx10)*wy1
+  wy2 ~ c(gy1, gy2, gy3, gy4, gy5, gy6, gy7, gy8, gy9, gy10)*wx1 + c(by1, by2, by3, by4, by5, by6, by7, by8, by9, by10)*wy1
+  wx3 ~ c(bx1, bx2, bx3, bx4, bx5, bx6, bx7, bx8, bx9, bx10)*wx2 + c(gx1, gx2, gx3, gx4, gx5, gx6, gx7, gx8, gx9, gx10)*wy2
+  wy3 ~ c(gy1, gy2, gy3, gy4, gy5, gy6, gy7, gy8, gy9, gy10)*wx2 + c(by1, by2, by3, by4, by5, by6, by7, by8, by9, by10)*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+"
+```
+
+Fit the lavaan multigroup model to each imputed data set.
+
+```{r}
+get_lavaan_pars <- function(x) {
+  bind_rows(
+    parameterestimates(x) %>%
+      mutate(Type = "Unstandardized")
+  ) %>%
+    as_tibble() %>%
+    unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE)
+}
+
+fit_multi_imp <- lapply(seq_len(imp$m), function(i) {
+  d_tmp <- mice::complete(data = imp, action = i, include = FALSE)
+  fit <- lavaan(
+      riclpm_constrained_multigroup,
+      data = d_tmp,
+      group = "Game",
+      group.equal = c(
+          "residuals", 
+          "residual.covariances",
+          "lv.variances", 
+          "lv.covariances"),
+      meanstructure = TRUE,
+      int.ov.free = TRUE
+    )
+    out <- get_lavaan_pars(fit) %>%  
+    # only keep what we need
+    filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>% 
+    filter(Parameter %in% c("wx2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wy2 ~ wx1")) %>%
+    mutate(Game = group)
+    out$imp <- i
+    out
+})
+
+```
+
+```{r include=FALSE}
+# Meta-analyze the models fitted independently to games
+# Select these parameters only
+d_ma <- fit_multi_imp[[1]]
+ 
+
+# Compile meta-analytic brms/Stan model
+bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+fit_ma_empty <- brm(
+  bf_ma,
+  data = d_ma,
+  prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
+    prior(normal(0, 0.5), class = "b"),
+  chains = 0,
+  control = list(adapt_delta = .9999, max_treedepth = 15),
+  file = here("Models/RICLPM-2L-stan/brms/brm-ma-empty")
+)
+
+cluster <- new_cluster(4)
+cluster_library(cluster, c("dplyr", "brms", "here", "stringr"))
+cluster_copy(cluster, "fit_ma_empty")
+
+run_MA <- function(data, cluster, brms_empty) {
+  fit_ma <- data %>%
+    group_by(Parameter) %>%
+    mutate(i = cur_group_id()) %>%
+    partition(cluster) %>%
+    summarise(
+      fit = list(
+        update(
+          brms_empty,
+          newdata = cur_data(),
+          control = list(adapt_delta = .9999, max_treedepth = 15),
+          iter = 15000, warmup = 5000, 
+          refresh = 0,
+        )
+      )
+    ) %>% 
+    collect()
+  
+  fit_ma
+}
+
+```
+
+Repeat the brms meta-analysis for the M (imputed) lavaan models.
+
+```{r}
+#' Run MA with MICE lavaan objects
+#' 
+#' @param data a list with results from the M imputations
+run_MA_imp <- function(data, cluster, brms_empty) {
+  out <- lapply(data, run_MA, cluster = cluster, brms_empty = brms_empty)
+
+  do.call(rbind, out)
+}
+
+fit_ma_imp <- run_MA_imp(fit_multi_imp, cluster, fit_ma_empty)
+```
+
+
+Lastly we pool the models into one, resulting in the same object as used in `Analysis.rmd`. 
+```{r}
+# pool
+tmp <- fit_ma_imp %>% 
+  group_by(Parameter) %>%
+  summarise(
+    fit = combine_models(mlist = fit, check_data = FALSE) %>% list
+  )
+
+tmp
+```
+
+## Thoughts
+- We can use this code as is with the real data and analysis
+- It'd be easy to perform a MNAR sensitivity analysis using $\delta$ adjustment <https://stefvanbuuren.name/fimd/sec-sensitivity.html>
+  - well-being: subtract $\delta$ - missing values caused by lower well-being
+  - game hours: add $\delta$ - missing values caused by more gaming
+- Only do this for "primary" outcome? WB ~ SPANE?
+- I guess the imputation model is not congenial as it only uses the observed variables, but I think that's fine. 
