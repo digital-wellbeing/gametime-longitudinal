@@ -643,14 +643,24 @@ last_plot() %+%
 Plots of covariance parameters (raw)
 
 ```{r}
-last_plot() %+% 
-  filter(
-    pars_riclpm %>% rename(Predictor = x_var, Outcome = y_var), 
-    Type == "Unstandardized", 
-    str_detect(Parameter, " ~~ "),
-    Outcome == "SPANE"
-  ) + 
-  labs(x = "Estimated LV covariance")
+pars_riclpm %>%
+  rename(Predictor = x_var, Outcome = y_var) %>% 
+  filter(Outcome == "SPANE") %>% 
+  filter(Type == "Unstandardized", str_detect(Parameter, " ~~ ")) %>% 
+  ggplot(
+    aes(
+      est, Game, 
+      col = Model, xmin = ci.lower, xmax = ci.upper
+    )
+  ) +
+  scale_x_continuous(
+    "Estimated parameter",
+    breaks = pretty_breaks()
+  ) +
+  geom_vline(xintercept = 0, size = .2, lty = 2) +
+  geom_pointrangeh(position = position_dodge2v(.5), size = .4) +
+  labs(subtitle = "SPANE") +
+  facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
 ```
 
 ## Meta-analyses
