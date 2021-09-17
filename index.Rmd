@@ -1,0 +1,18 @@
+--- 
+title: "Longitudinal study of game play and well-being"
+author: "Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, & Andy Przybylski"
+date: "`r Sys.Date()`"
+site: bookdown::bookdown_site
+documentclass: book
+# url: your book url like https://bookdown.org/yihui/bookdown
+# cover-image: path to the social sharing image like images/cover.jpg
+description: |
+  Data analyses related to "Little to no evidence for causal effects between video game play and well-being."
+biblio-style: apalike
+---
+
+# Preface
+
+This document contains the analyses supporting "Little to no evidence for causal effects between video game play and well-being" <doi>.
+
+The data are currently in the ...data-raw project on OneDrive, can move from there to here (`Data/`).
