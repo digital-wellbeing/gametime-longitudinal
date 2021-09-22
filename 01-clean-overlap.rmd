@@ -119,9 +119,21 @@ plot_compare <- function(data) {
             yend = rowid,
             color = "merged"
             ), 
+            size = 1,
             position = position_nudge(y = 0.5)
         ) +
-        scale_color_manual(values = c("red", "black"))
+    geom_rect(
+        aes(
+            xmin = session_start2, 
+            xmax = session_end2, 
+            ymin = 0,
+            ymax = Inf,
+            fill = "merged",
+        ),
+        alpha = 0.33,
+        position = position_nudge(y = 0.5)
+    ) +
+    scale_color_manual(values = c("red", "black"))
 }
 plot_compare(tmp)
 ```
