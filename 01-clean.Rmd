@@ -237,7 +237,8 @@ d_t <- bind_rows(
 )
 ```
 
-todo Deal with potentially overlapping sessions
+Just like in our previous study, the telemetry shows that measuring an event in a game isn't always easy.
+For example, the participant below has overlapping sessions.
 
 ```{r}
 # Examples of overlapping sessions
@@ -246,6 +247,282 @@ d_t %>%
   filter(pid == "de9b7f238ba168b0") %>% 
   mutate(interval = interval(session_start, session_end)) %>% 
   mutate(x = int_overlaps(interval, lag(interval)))
+```
+
+```{r}
+d_t %>% 
+  arrange(session_start, session_end) %>% 
+  filter(pid == "de9b7f238ba168b0", session_start < "2021-07-5") %>% 
+  rowid_to_column() %>% 
+  ggplot(aes(session_start, rowid)) +
+  geom_segment(aes(xend = session_end, yend = rowid))
+```
+
+Just like in the pilot, we don't want to throw away game sessions, which is why we choose, again, to merge overlapping sessions.
+Note: In the end, we'll sum all sessions over the two week period, so even if we didn't merge them, and split them instead, the end result would be the same.
+We just don't want to double count any session.
+
+First, let's check whether there are overlaps for all games.
+```{r}
+t1 <- Sys.time()
+overall_per_game <- 
+  d_t %>% 
+  group_by(Game, pid) %>% 
+  arrange(session_start, session_end) %>%
+  mutate(interval = interval(session_start, session_end)) %>%
+  mutate(x = int_overlaps(interval, lag(interval))) %>%
+  ungroup() %>% 
+  group_by(Game) %>% 
+  summarise(is_there_overlap = sum(x, na.rm = TRUE))
+t2 <- Sys.time()
+t2-t1
+```
+
+Next, let's find the largest lag for our example participant.
+By this principle, we'll know for what number of rows we need to check each session.
+```{r}
+# find the largest lag
+keep_going <- TRUE
+lag_n <- 1
+while (keep_going) {
+  # check whether there's overlap for each lag
+  tmp <-
+    d_t %>%
+    arrange(session_start, session_end) %>%
+    filter(pid == "de9b7f238ba168b0") %>%
+    mutate(interval = interval(session_start, session_end)) %>%
+    mutate(x = int_overlaps(interval, lag(interval, lag_n)))
+
+  # end if there's no TRUEs anymore for this lag number
+  if (sum(tmp$x, na.rm = TRUE) == 0) {
+    keep_going <- FALSE
+    print(paste0("Stop at ", lag_n-1))
+  }
+  else{
+    # increase lag
+    lag_n <- lag_n + 1
+  }
+}
+```
+
+Apparently, there's a 14 session lag.
+Let's visualize that.
+Looks accurate, the bottom session overlaps with all other sessions.
+Out of those 14 sessions, we want to take the earliest session start time and the latest session end time to "merge" all 14 sessions here.
+```{r}
+# get last lag
+tmp <- 
+  d_t %>% 
+  arrange(session_start, session_end) %>% 
+  filter(pid == "de9b7f238ba168b0") %>% 
+  mutate(interval = interval(session_start, session_end)) %>% 
+  mutate(x = int_overlaps(interval, lag(interval, lag_n-1))) %>% 
+  mutate(r = row_number()) # add identifier for row
+
+# get the row with the largest lag
+our_row <- 
+  tmp %>% 
+  filter(x == TRUE) %>% 
+  pull(r)
+
+# plot
+tmp %>% 
+  filter(r %in% (our_row-(lag_n-1)):our_row) %>% 
+  rowid_to_column() %>% 
+  ggplot(aes(session_start, rowid)) +
+  geom_segment(aes(xend = session_end, yend = rowid))
+
+```
+
+Next, we assign each group of overlapping sessions an ID.
+In our example above, all 14 sessions should have a common identifier.
+Below, I iterate over each number of lags, from the largest number to the smallest.
+```{r}
+tmp <- 
+  d_t %>% 
+  arrange(session_start, session_end) %>% 
+  filter(pid == "de9b7f238ba168b0") %>% 
+  mutate(interval = interval(session_start, session_end)) %>%
+  mutate(session_id = NA_character_) %>% # empty placeholder
+  mutate(r = row_number())
+
+lag_n <- 15
+current_id <- 1
+while (lag_n > 0) {
+  # look for current lag and mark it
+  tmp <- 
+    tmp %>% 
+    mutate(x = if_else(is.na(session_id), int_overlaps(interval, lag(interval, lag_n)), NA)) # is na necessary so x isn't overwritten
+  
+  # get row numbers of those rows with the current lag
+  rows <- tmp %>% 
+    filter(x == TRUE) %>% 
+    pull(r)
+  
+  # now iterate over those row numbers, then "go back" by the current lag, and assign these rows a session id 
+  for (a_number in rows) {
+    tmp <- 
+      tmp %>%
+      mutate(
+      session_id = if_else(r %in% a_number:(a_number - (lag_n)), paste0("session", current_id), session_id)
+      )
+    
+    # update session id
+    current_id <- current_id + 1
+  }
+  
+  # reduce lag
+  lag_n <- lag_n - 1
+}
+
+tmp <- 
+  tmp %>% 
+  select(-x, -r)
+```
+
+I thought I was done here, and we could just group by session ID, then select earliest session start and latest session end.
+However, I realized that the inverval approach from above doesn't do fully what we want.
+The approach only check whether interval in row X overlaps with lag(x).
+Now imagine three intervals: Interval A is completely contained within interval B, but interval C is outside interval A, but inside interval B.
+This way, interval C won't be flagged as overlapping with A, although we want to merge all three of them.
+
+I see two options here:
+Either we work recursively per row, such that we compare each row with the previous one for overlap; if they do, we merge them.
+We do that until there's no more overlap.
+
+Or we go with the strategt from above, merge the sessions we've marked so far and then check for overlap again.
+Because I've already written the above, I'll try out the second approach.
+```{r}
+tmp <- 
+  tmp %>% 
+  # temporarily filter out those sessions without an ID
+  filter(!is.na(session_id)) %>% 
+  group_by(session_id) %>% 
+  mutate(
+    session_start = min(session_start),
+    session_end = max(session_end)
+  ) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  # and add them back
+  bind_rows(
+    .,
+    tmp %>% filter(is.na(session_id))
+  ) %>% 
+  mutate(interval = interval(session_start, session_end)) %>% 
+  select(-session_id) %>% 
+  arrange(pid, session_start, session_end)
+```
+
+Now let's do the same thing as above (I'm too lazy/unskilled to write this into a function before I know it's correct).
+```{r}
+# find the largest lag
+keep_going <- TRUE
+lag_n <- 1
+while (keep_going) {
+  # check whether there's overlap for each lag
+  tmp <-
+    tmp %>% 
+    mutate(x = int_overlaps(interval, lag(interval, lag_n)))
+
+  # end if there's no TRUEs anymore for this lag number
+  if (sum(tmp$x, na.rm = TRUE) == 0) {
+    keep_going <- FALSE
+    print(paste0("Stop at ", lag_n-1))
+  }
+  else{
+    # increase lag
+    lag_n <- lag_n + 1
+  }
+}
+```
+
+There's still two lags, so let's go back and iterate like I did previously.
+```{r}
+tmp <- 
+  tmp %>% 
+  mutate(session_id = NA_character_) %>% # empty placeholder
+  mutate(r = row_number()) %>% 
+  select(-x)
+
+lag_n <- 3
+current_id <- 1
+while (lag_n > 0) {
+  # look for current lag and mark it
+  tmp <- 
+    tmp %>% 
+    mutate(x = if_else(is.na(session_id), int_overlaps(interval, lag(interval, lag_n)), NA)) # is na necessary so x isn't overwritten
+  
+  # get row numbers of those rows with the current lag
+  rows <- tmp %>% 
+    filter(x == TRUE) %>% 
+    pull(r)
+  
+  # now iterate over those row numbers, then "go back" by the current lag, and assign these rows a session id 
+  for (a_number in rows) {
+    tmp <- 
+      tmp %>%
+      mutate(
+      session_id = if_else(r %in% a_number:(a_number - (lag_n)), paste0("session", current_id), session_id)
+      )
+    
+    # update session id
+    current_id <- current_id + 1
+  }
+  
+  # reduce lag
+  lag_n <- lag_n - 1
+}
+
+tmp <- 
+  tmp %>% 
+  select(-x, -r)
+
+# reduce overlaps
+tmp <- 
+  tmp %>% 
+  # temporarily filter out those sessions without an ID
+  filter(!is.na(session_id)) %>% 
+  group_by(session_id) %>% 
+  mutate(
+    session_start = min(session_start),
+    session_end = max(session_end)
+  ) %>% 
+  slice(1) %>% 
+  ungroup() %>% 
+  # and add them back
+  bind_rows(
+    .,
+    tmp %>% filter(is.na(session_id))
+  ) %>% 
+  mutate(interval = interval(session_start, session_end)) %>% 
+  select(-session_id) %>% 
+  arrange(pid, session_start, session_end)
+```
+
+Last check: no overlaps left.
+@Kristoffer, have a look whether this makes sense in principle.
+If so, I need to think how to do this procedure recursively per game and ID.
+```{r}
+# find the largest lag
+keep_going <- TRUE
+lag_n <- 1
+while (keep_going) {
+  # check whether there's overlap for each lag
+  tmp <-
+    tmp %>% 
+    mutate(x = int_overlaps(interval, lag(interval, lag_n)))
+
+  # end if there's no TRUEs anymore for this lag number
+  if (sum(tmp$x, na.rm = TRUE) == 0) {
+    keep_going <- FALSE
+    print(paste0("Stop at ", lag_n-1))
+  }
+  else{
+    # increase lag
+    lag_n <- lag_n + 1
+  }
+}
 ```
 
 Create an hours variable from start and end times
@@ -257,6 +534,11 @@ d_t <- d_t %>%
 ```
 
 Then look at individual sessions. We do exclusions here.
+
+Generally, we want to exclude as few sessions as possible.
+The gaming companies told us that with consoles, players sometimes leave and the console goes into rest mode.
+In that case, the session lasts for a long time.
+They recommended we cut those sessions.
 
 ```{r}
 d_t %>% 
