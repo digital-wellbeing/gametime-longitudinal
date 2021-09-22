@@ -258,6 +258,15 @@ d_t %>%
   geom_segment(aes(xend = session_end, yend = rowid))
 ```
 
+```{r, include = FALSE}
+## object used in `01-clean-overlap.rmd`
+write_rds(
+  d_t %>% 
+    arrange(session_start, session_end) %>% 
+    filter(pid == "de9b7f238ba168b0"),
+  file = here("Data/overlap_example.Rds")
+)
+```
 Just like in the pilot, we don't want to throw away game sessions, which is why we choose, again, to merge overlapping sessions.
 Note: In the end, we'll sum all sessions over the two week period, so even if we didn't merge them, and split them instead, the end result would be the same.
 We just don't want to double count any session.
