@@ -26,7 +26,10 @@ theme_set(
 )
 
 # parallel computations
-cluster <- new_cluster(parallel::detectCores(logical = FALSE))
+MAX_CORES <- as.numeric(Sys.getenv("MAX_CORES"))
+if(is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)
+
+cluster <- new_cluster(MAX_CORES)
 # load packages on clusters
 cluster_library(cluster, c("dplyr", "lubridate"))
 ```
