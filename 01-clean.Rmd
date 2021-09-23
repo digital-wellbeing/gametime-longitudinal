@@ -212,25 +212,6 @@ t_or <- t_or %>%
 
 Cleaning the telemetry data.
 
-There are no matches in outriders. Export a file with distinct IDs in each file to show Ubi. todo come back here.
-
-```{r ubi, eval = FALSE}
-outriders_survey_ids <- distinct(filter(d, Game=="Outriders"), pid) %>% 
-  arrange(pid)
-outriders_telemetry_ids <- distinct(t_or, pid) %>% 
-  arrange(pid)
-
-outriders_survey_ids  # rows
-outriders_telemetry_ids  # rows
-# All ids in survey with a match in telemetry
-semi_join(outriders_survey_ids, outriders_telemetry_ids)
-# The same in reverse
-semi_join(outriders_telemetry_ids, outriders_survey_ids)
-
-write_csv(outriders_survey_ids, "Outriders-survey-ids.csv")
-write_csv(outriders_telemetry_ids, "Outriders-telemetry-ids.csv")
-```
-
 Merge games tables to one table
 
 ```{r}
