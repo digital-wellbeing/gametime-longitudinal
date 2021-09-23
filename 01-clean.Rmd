@@ -240,7 +240,81 @@ d_t <- bind_rows(
 )
 ```
 
-todo Deal with potentially overlapping sessions
+Deal with potentially overlapping sessions
+```{r}
+#' Check if int1 and int2 intersect
+#' if they intersect:
+#'      - set int1 to union of int1 & int2
+#'      - set int2 to NA
+#' if not intersect:
+#'      - return original intervals
+#' 
+#' @return vector of int1, int2
+merge_interval <- function(int2, int1) {
+    if(!is.na(intersect(int1, int2))) {
+        int1 <- union(int1, int2)
+        int2 <- as.interval(NA)
+        out <- c(int1, int2)
+    } else {
+        out <- c(int1, int2)
+    }
+
+    out
+}
+
+# Merge all overlapping intervals in df
+merge_intervals_all <- function(interval, .pb = NULL) {
+    if(!is.null(.pb)) .pb$tick()$print()
+    interval2 <- interval
+    tot_rows <- length(interval)
+    for(i in seq_along(interval2)) {
+        int1 <- interval2[i]
+        if(is.na(int1)) next
+        if(i < tot_rows) {
+            for(j in (i + 1):tot_rows) {
+                #cat("i: ", i, ", j: ", j, "\n")
+                int2 <- interval2[j]
+                merged <- merge_interval(int2, int1)
+                int1 <- merged[1]
+                interval2[i] <- int1
+                interval2[j] <- merged[2]
+                # we break the loop at the first non-overlapping interval
+                # data must be sorted by `session_start` for this to work
+                if(!is.na(merged[2])) break
+        }
+        }
+    }
+    interval2
+}
+
+```
+
+NB: we remove all negative sessions before merging sessions.
+
+```{r merge-sessions}
+# explicitly cache
+data_path <- here("Data", "session-overlap-merged.Rds")
+if(file.exists(data_path)) {
+    message("Loading cached data")
+    d_t <- read_rds(file = data_path)
+} else {
+    message(
+      "Merging overlapping sessions (grab a coffee, this will take a while)"
+    )
+    n <- length(unique(d_t$pid))
+    pb <- progress_estimated(n, 0)
+    d_t <- d_t %>%
+    mutate(
+        interval = interval(session_start, session_end)
+    ) %>%
+    filter(as.duration(interval) > 0) %>%
+    group_by(pid, Game) %>%
+    arrange(session_start, session_end, .by_group = TRUE) %>%
+    mutate(interval2 = merge_intervals_all(interval, .pb = pb)) %>%
+    ungroup
+    write_rds(d_t, file = here("Data/session-overlap-merged.Rds"))
+}
+```
 
 ```{r}
 # Examples of overlapping sessions
@@ -253,10 +327,12 @@ d_t %>%
 
 Create an hours variable from start and end times
 
+TODO: use better name for interval2 (the merged intervals)
+
 ```{r}
 # Create hours from end and start time
 d_t <- d_t %>% 
-  mutate(Hours = as.numeric(session_end - session_start)/60/60)
+  mutate(Hours = as.duration(interval2)/3600)
 ```
 
 Then look at individual sessions. We do exclusions here.
