@@ -1,0 +1,303 @@
+---
+title: "Deal with overlapping sessions"
+author: "Kristoffer Magnusson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r packages, results = 'hide'}
+library(knitr)
+library(tidyverse)
+library(lubridate)
+library(here)
+library(progress)
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+```{r}
+
+#' Check if int1 and int2 intersect
+#' if they intersect:
+#'      - set int1 to union of int1 & int2
+#'      - set int2 to NA
+#' if not intersect:
+#'      - return original intervals
+#' 
+#' @return vector of int1, int2
+merge_interval <- function(int2, int1) {
+    if(!is.na(intersect(int1, int2))) {
+        int1 <- union(int1, int2)
+        int2 <- as.interval(NA)
+        out <- c(int1, int2)
+    } else {
+        out <- c(int1, int2)
+    }
+
+    out
+}
+
+# Merge all overlapping intervals in df
+merge_intervals_df <- function(interval, .pb = NULL) {
+    if(!is.null(.pb)) .pb$tick()$print()
+    interval2 <- interval
+    tot_rows <- length(interval)
+    for(i in seq_along(interval2)) {
+        int1 <- interval2[i]
+        if(is.na(int1)) next
+        if(i < tot_rows) {
+            for(j in (i + 1):tot_rows) {
+                #cat("i: ", i, ", j: ", j, "\n")
+                int2 <- interval2[j]
+                merged <- merge_interval(int2, int1)
+                int1 <- merged[1]
+                interval2[i] <- int1
+                interval2[j] <- merged[2]
+                # we break the loop at the first non-overlapping interval
+                # data must be sorted by `session_start` for this to work
+                if(!is.na(merged[2])) break
+        }
+        }
+    }
+    interval2
+}
+
+```
+
+
+## Reprex
+Let's start with a reproducible example to see if the function can handle both overlapping and separate session.
+```{r}
+tmp <- data.frame(
+    interval = c(
+        interval(
+            as_datetime("2011-12-31 12:00:00"), 
+            as_datetime("2011-12-31 14:00:00")
+            ), 
+        interval(
+            as_datetime("2011-12-31 13:00:00"), 
+            as_datetime("2011-12-31 14:00:00")
+        ),
+        interval(
+            as_datetime("2011-12-31 13:30:00"), 
+            as_datetime("2011-12-31 16:00:00")
+        ),
+        interval(
+            as_datetime("2011-12-31 16:30:00"), 
+            as_datetime("2011-12-31 17:00:00")
+        ),
+        interval(
+            as_datetime("2011-12-31 11:00:00"), 
+            as_datetime("2011-12-31 12:30:00")
+        )
+    )
+) %>% mutate(
+    session_start = int_start(interval),
+    session_end = int_end(interval)
+    )
+```
+
+
+```{r, results = FALSE, message = FALSE}
+tmp <- tmp %>% 
+    mutate(interval2 = merge_intervals_df(interval))
+```
+
+
+The plot looks correct.
+```{r, echo = FALSE}
+plot_compare <- function(data) {
+    data <- data %>% mutate(
+        session_start2 = int_start(interval2),
+        session_end2 = int_end(interval2)
+        )
+
+    data %>% 
+    rowid_to_column() %>% 
+    ggplot(aes(session_start, rowid)) +
+    geom_segment(
+        aes(
+            xend = session_end, 
+            yend = rowid,
+            color = "original"
+            )
+        ) +
+    geom_segment(
+        aes(
+            x = session_start2, 
+            xend = session_end2, 
+            yend = rowid,
+            color = "merged"
+            ), 
+            size = 1,
+            position = position_nudge(y = 0.5)
+        ) +
+    geom_rect(
+        aes(
+            xmin = session_start2, 
+            xmax = session_end2, 
+            ymin = 0,
+            ymax = Inf,
+            fill = "merged",
+        ),
+        alpha = 0.33,
+        position = position_nudge(y = 0.5)
+    ) +
+    scale_color_manual(values = c("red", "black"))
+}
+plot_compare(tmp)
+```
+
+We solve this if we sort first
+```{r}
+tmp %>% 
+    arrange(session_start) %>%
+    mutate(interval2 = merge_intervals_df(interval)) %>%
+    plot_compare
+```
+
+## Real data
+
+Now let's try with real data. The object is from `01_clean.Rmd`.
+```{r}
+# explicitly cache
+data_path <- here("Data", "session-overlap-merged.Rds")
+if(file.exists(data_path)) {
+    d_t <- read_rds(file = data_path)
+} else {
+    # `d_t` from `01-clean.Rmd`
+    d_t <- read_rds(here("Data/overlap_example.Rds"))
+    n <- length(unique(d_t$pid))
+    pb <- progress_estimated(n, 0)
+    d_t <- d_t %>%
+    mutate(
+        interval = interval(session_start, session_end)
+    ) %>%
+    group_by(pid, Game) %>%
+    arrange(session_start, session_end, .by_group = TRUE) %>%
+    mutate(interval2 = merge_intervals_df(interval, .pb = pb))
+    write_rds(tmp, file = here("Data/session-overlap-merged.Rds"))
+}
+```
+
+Plot 1 individual
+```{r, results = FALSE, message = FALSE}
+
+tmp <- d_t %>% 
+  filter(pid == "de9b7f238ba168b0", session_start < "2021-07-5")
+
+plot_compare(tmp)
+```
+
+The merged intervals looks correct, for this participant.
+
+## More checks
+Let's do some more checks. For instance, there should be no participant where `sum(interval) < sum(interval2)`.
+
+```{r}
+tmp2 <- d_t %>% 
+    group_by(pid, Game) %>% 
+    summarise(sum = sum(interval), sum2 = sum(interval2, na.rm = TRUE))
+
+tmp2 %>% filter(sum < sum2)
+```
+
+
+Let's check what's going on with the participant `00a04b47f9e550b6` with negative play time. 
+```{r}
+tmp <- d_t %>% 
+  filter(pid == "00a04b47f9e550b6")
+
+plot_compare(tmp)
+
+sum(tmp$interval) / 3600
+sum(tmp$interval2, na.rm = TRUE) / 3600
+
+tmp %>% filter(as.duration(interval) < 0)
+```
+
+So there's one weird interval where `session_end` and `session_start` are flipped. Let's reverse them
+
+```{r}
+tmp3 <- tmp
+tmp3[10, "session_start"] <- tmp[10, "session_end"]
+tmp3[10, "session_end"] <- tmp[10, "session_start"]
+tmp3 <- tmp3 %>% mutate(
+    interval = interval(session_start, session_end),
+    interval2 = merge_intervals_df(interval)
+    )
+
+sum(tmp3$interval) / 3600
+sum(tmp3$interval2, na.rm = TRUE) / 3600
+plot_compare(tmp3)
+```
+
+However, this session is still problematic as it's ~6.48 days long. However, this is in the data, and not caused by the merge. 
+```{r}
+tmp3$interval[10] %>% as.duration
+```
+
+
+Let's look at another problematic participant
+
+```{r}
+tmp <- d_t %>% 
+  filter(pid == "011897d9b0343510")
+
+tmp <- tmp %>%
+    arrange(session_start) %>%
+    mutate(interval2 = merge_intervals_df(interval))
+
+plot_compare(tmp)
+
+tmp %>% 
+    mutate(dur = as.duration(interval)) %>%
+    filter(dur < 0)
+
+```
+
+
+How many participants have negative sessions?
+```{r}
+neg_interval <- d_t %>% 
+    group_by(pid, Game) %>%
+    summarize(has_neg_session = any(as.duration(interval) < 0))
+
+mean(neg_interval$has_neg_session)
+
+neg_interval %>% filter(has_neg_session) %>% pull(Game) %>% table
+```
+
+
+```{r}
+tmp <- d_t %>% 
+  filter(pid == "005d27620c725ed0")
+
+plot_compare(tmp)
+sum(tmp$interval) / 3600
+sum(tmp$interval2, na.rm = TRUE) / 3600
+tmp %>% 
+    filter(as.duration(interval) < 0)
+
+
+tmp %>% 
+    mutate(
+        dur = as.duration(interval),
+        dur2 = as.duration(interval2)
+        ) %>% 
+        select(dur, dur2) %>% 
+        tail
+```
+Problem also caused by negative session (-~11 hours).
+
+Check how many participants had any session > 10 hours.
+```{r}
+has_10h_gt <- d_t %>% 
+    group_by(pid, Game) %>%
+    summarize(
+        has_10h_gt = any((as.duration(interval) / 3600) > 10),
+        has_10h_gt2 = any((as.duration(interval2) / 3600) > 10)
+        )
+
+mean(has_10h_gt$has_10h_gt)
+mean(has_10h_gt$has_10h_gt2, na.rm = TRUE)
+```
