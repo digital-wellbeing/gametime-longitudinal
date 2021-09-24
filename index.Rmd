@@ -3,16 +3,22 @@ title: "Longitudinal study of game play and well-being"
 author: "Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, & Andy Przybylski"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
+output: bookdown::bs4_book
 documentclass: book
-# url: your book url like https://bookdown.org/yihui/bookdown
+url: https://digital-wellbeing.github.io/gametime-longitudinal
 # cover-image: path to the social sharing image like images/cover.jpg
 description: |
-  Data analyses related to "Little to no evidence for causal effects between video game play and well-being."
+  Data analyses related to "Little to no evidence for causal effects between video game play and well-being (Vuorre, Johannes, Magnusson, & Przybylski (2021)"
 biblio-style: apalike
 ---
 
 # Preface
 
-This document contains the analyses supporting "Little to no evidence for causal effects between video game play and well-being" <doi>.
+This document contains analyses supporting "Little to no evidence for causal effects between video game play and well-being".
 
-The data are currently in the ...data-raw project on OneDrive, can move from there to here (`Data/`).
+- [Preprint](todo)  
+- [OSF Repo](https://osf.io/fb38n/)  
+- [GitHub repo](https://github.com/digital-wellbeing/gametime-longitudinal)  
+- [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal)
+
+This repository contains the data and code required to reproduce all analyses reported in our manuscript. In addition, the shared raw data contains many survey and telemetry variables that we did not analyse, but that may be of interest to further analyses of gameplay and well being. These raw data are found in the `Data/` directory of this repository. The code that we used to clean and analyse those data are organised in R Markdown (`.Rmd`) files in this directory, which are meant to be run in the sequence indicated by their numeric prefixes. To run all the cleaning and analyses, and compile the resulting document (this website), run `bookdown::render_book()` in R or click "Build Book" in the RStudio IDE.

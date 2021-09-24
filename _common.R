@@ -2,7 +2,7 @@
 
 # Global knitr options
 knitr::opts_chunk$set(
-  echo = FALSE,
+  echo = TRUE,
   warning = FALSE,
   cache = TRUE,
   error = FALSE,

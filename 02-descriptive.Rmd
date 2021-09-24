@@ -1,6 +1,8 @@
 # Descriptives
 
-```{r packages, include = FALSE}
+Load the required packages.
+
+```{r packages, results = "hide", cache = FALSE}
 library(knitr)
 library(scales)
 library(janitor)
@@ -16,7 +18,9 @@ library(showtext)
 library(tidyverse)
 ```
 
-```{r setup, include = FALSE}
+Plot and table options.
+
+```{r}
 # gtsummary table theme
 theme_gtsummary_compact()
 
@@ -34,82 +38,19 @@ theme_set(
 )
 ```
 
+We then load the previously cleaned data table.
 
 ```{r}
 data_path <- here("Data", "cleaned_data.rds")
 if(file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
-  stop("'Data/cleaned_data.rds' doesn't exist, run `Analysis/data_cleaning.Rmd` to create it.")
+  stop("'Data/cleaned_data.rds' doesn't exist, run `01-clean.Rmd` to create it.")
 }
 
 # Make wave a nicely labelled factor
 d <- d %>%
   mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
-```
-
-## Demographics before exclusions
-
-```{r}
-d %>%
-  filter(wid == 1) %>% 
-  distinct(pid, Game, Age, Experience, Gender) %>%
-  select(-pid) %>%
-  tbl_summary(by = Game, missing_text = "Missing") %>%
-  add_overall() %>% 
-  bold_labels() %>% 
-  italicize_levels() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Sample demographics",
-    subtitle = "Inclusive of everyone before any exclusions"
-  )
-```
-
-## Excluding participants
-
-We exclude people who had no play during the study
-
-```{r}
-d %>% 
-  distinct(Game, pid, Waves_with_play) %>% 
-  mutate(Any_play = Waves_with_play > 0) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall()
-# Filter by game for now because when telemetry is not provided its always zero. todo change this when data is in.
-d <- d %>% 
-  filter(
-    !(Game %in% c(
-      "AC:NH", "Apex Legends", 
-      "Forza Horizon 4", "Gran Turismo Sport"
-    ) & 
-      Waves_with_play == 0)
-  )
-d %>% 
-  distinct(Game, pid, Waves_with_play) %>% 
-  mutate(Any_play = Waves_with_play > 0) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall()
-```
-
-We then exclude players who had no survey responses
-
-```{r}
-d %>% 
-  distinct(Game, pid, Waves_with_response) %>% 
-  mutate(Any_response = Waves_with_response > 0) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall()
-d <- filter(d, Waves_with_response > 0)
-d %>% 
-  distinct(Game, pid, Waves_with_response) %>% 
-  mutate(Any_response = Waves_with_response > 0) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall()
 ```
 
 ## Demographics after exclusions
@@ -139,7 +80,8 @@ These are for people after exclusions.
 ```{r}
 # Get data on invite dates and Ns
 invites <- read_csv(here("Data", "invites.csv")) %>% 
-  rename(Game = game)
+  rename(Game = game) %>% 
+  mutate(Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"))
 # Create a table where wave 0 are number of invites,
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
@@ -216,28 +158,28 @@ d %>%
 
 #### Durations between waves
 
-Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves
+Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
 ```{r}
 d %>%
-  filter(Responded) %>%
-  select(wid, Game, Interval) %>%
-  group_by(Game, wid) %>%
-  filter(wid > 1) %>%
+  select(Wave, Game, interval) %>%
+  # group_by(Wave) %>%
+  filter(Wave != "Wave 1") %>%
   summarise(
-    min = min(Interval, na.rm = TRUE) %>% round(1),
-    q25 = quantile(Interval, .25, na.rm = TRUE) %>% round(1),
-    median = median(Interval, na.rm = TRUE) %>% round(1),
-    q75 = quantile(Interval, .75, na.rm = TRUE) %>% round(1),
-    max = max(Interval, na.rm = TRUE) %>% round(1),
-    n = n()
-  ) %>%
-  kable(caption = "Interval durations preceding waves 2 and 3.")
+    Value = quantile(
+      interval, 
+      probs = c(0, .10, .25, .5, .75, .90, 1), 
+      na.rm=T
+    ) %>% 
+      round(3),
+    Quantile = percent(c(0, .10, .25, .5, .75, .90, 1))
+  ) %>% 
+  pivot_wider(names_from = Quantile, values_from = Value) %>% 
+  kable(caption = "Interval duration percentiles preceding waves 2 and 3.")
 d %>%
-  filter(Responded) %>%
   filter(Wave != "Wave 1") %>%
   mutate(Wave = fct_drop(Wave)) %>%
-  ggplot(aes(Interval)) +
+  ggplot(aes(interval)) +
   geom_vline(xintercept = 14, size = .2) +
   geom_histogram(binwidth = 1, col = "white") +
   scale_y_continuous(
@@ -249,10 +191,4 @@ d %>%
     breaks = seq(0, 28, by = 7)
   ) +
   facet_grid(Game ~ Wave, scales = "free_y")
-```
-
-## Save excluded data
-
-```{r}
-write_rds(d, file = here("Data/excluded_data.rds"))
 ```

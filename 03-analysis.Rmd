@@ -1,10 +1,15 @@
 # Main analysis
 
-```{r packages, include = FALSE}
+This document contains the main analyses presented in the manuscript.
+
+We first load the required R packages.
+
+```{r packages, results = "hide", cache = FALSE}
 library(knitr)
 library(scales)
 library(janitor)
 library(ggbeeswarm)
+library(ggpp)
 library(gtsummary)
 library(bayestestR)
 library(brms)
@@ -12,33 +17,31 @@ library(tidybayes)
 library(broom)
 library(here)
 library(lubridate)
-library(naniar)
 library(ggtext)
-library(emmeans)
 library(ggstance)
 library(ggdist)
 library(patchwork)
-library(readxl)
 library(lavaan)
 library(GGally)
-library(ggnewscale)
 library(showtext)
 library(multidplyr)
 library(tidyverse)
 ```
 
-```{r setup, include=FALSE}
+Define plotting, table, and parallel processing options.
+
+```{r settings, cache = FALSE}
 # parallel computations
-cluster <- new_cluster(parallel::detectCores(logical = FALSE))
+MAX_CORES <- as.numeric(Sys.getenv("MAX_CORES"))
+if(is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)
+cluster <- new_cluster(MAX_CORES)
+
 # load packages on clusters
 cluster_library(cluster, c("dplyr", "lavaan"))
 
 # MCMC settings
-options(mc.cores = 4)
+options(mc.cores = 1)
 if (require("cmdstanr")) options(brms.backend = "cmdstanr")
-
-# Run this to delete fitted models and refit
-# unlink(list.files(pattern = "brm-.*\\.rds"))
 
 # Plotting options
 Font <- "Titillium Web"
@@ -52,44 +55,39 @@ theme_set(
       panel.grid.major.x = element_blank()
     )
 )
+col1 <- "#2980b9"
+col2 <- "#2980b9"
+
+# gtsummary tables
+theme_gtsummary_compact()
 ```
 
+We analyse the data cleaned previously.
+
 ```{r}
-data_path <- here("Data", "excluded_data.rds")
+data_path <- here("Data", "cleaned_data.rds")
 if(file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
-  stop("'Data/excluded_data.Rds' doesn't exist, run `Analysis/descriptive.Rmd` to create it.")
+  stop("'Data/cleaned_data.rds' doesn't exist, run `01-clean.Rmd` to create it.")
 }
+
+# Make wave a nicely labelled factor
+d <- d %>%
+  mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
 ```
-
-todo basically double check everything 
-
-## Change this
-
-Just keep games with telemetry
-
-```{r}
-d <- d %>% 
-  filter(
-    Game %in% c(
-        "AC:NH", 
-        "Apex Legends", 
-        "Forza Horizon 4", 
-        "Gran Turismo Sport"
-      )
-  )
-```
-
-## Univariate analyses
 
 For all analyses, game time indicates average number of hours per day. The telemetry indicates total hours in the two week window, so we divide that by 14 to talk about average hours per day.
 
 ```{r}
 d <- d %>% 
-  mutate(Hours = Hours / 14)
+  mutate(
+    Hours = Hours / 14,
+    hours_est = hours_est / 14
+  )
 ```
 
+## Univariate analyses
 
 ### Key variables over time
 
@@ -103,7 +101,7 @@ d %>%
   adorn_pct_formatting()
 ```
 
-```{r}
+```{r variables-over-time, fig.width = 8, fig.height = 8}
 tmp <- d %>%
   select(
     Game, Wave, pid,
@@ -120,9 +118,6 @@ tmp <- d %>%
       labels = c("Hours played", "Affect", "Life satisfaction", "Intrinsic", "Extrinsic")
     )
   )
-
-col1 <- "#2980b9"
-col2 <- "#2980b9"
 
 tmp %>%
   ggplot(
@@ -178,11 +173,6 @@ tmp %>%
     legend.position = "none", 
     strip.text.x = element_text(size = 8)
   )
-ggsave(
-  here("Output/Figures/Figure-Variables-Over-Time.png"), 
-  width = 8, 
-  height = 7
-)
 ```
 
 Then take a look at a simple model of change over time for each variable. Note that we can't use varying slopes with lmer because there's not enough data, so just random intercepts for games and players.
@@ -205,6 +195,33 @@ parameters_change_over_time %>%
   mutate(Result = str_glue("{estimate}, 95%CI [{conf.low}, {conf.high}]")) %>% 
   select(Variable, term, Result) %>% 
   pivot_wider(names_from = term, values_from = Result)
+```
+
+## Subjective and objective time
+
+```{r}
+d %>% 
+  select(Game, pid, Wave, Objective = Hours, Subjective = hours_est) %>% 
+  filter(Objective < 3, Subjective < 3) %>% 
+  ggplot(aes(Objective, Subjective)) +
+  scale_x_continuous(
+    "Hours played (telemetry)",
+    breaks = pretty_breaks()
+  ) +
+  scale_y_continuous(
+    "Subjectively estimated hours played",
+    breaks = pretty_breaks()
+  ) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, size = .25) +
+  geom_point(size = .2, alpha = .2, shape = 1, col = col1) +
+  stat_centroid() +
+  geom_smooth(
+    method = "lm", size = .4,
+    color = "black",
+    alpha = .33, show.legend = FALSE
+  ) +
+  facet_grid(Wave~Game, margins = TRUE) +
+  theme(aspect.ratio = 1)
 ```
 
 
@@ -280,14 +297,18 @@ Wrangle data to a format where lavaan model is easier to map to variable pairs: 
 
 ```{r}
 d_riclpm_long <- d %>%
-  select(Game, pid, wid, Hours, Intrinsic = Enjoyment, Extrinsic, SPANE, CSAS) %>%
+  select(
+    Game, pid, wid, 
+    Hours, hours_est, 
+    Intrinsic = Enjoyment, Extrinsic, SPANE, CSAS
+  ) %>%
   # Long format on well-being scores (outcomes)
   pivot_longer(
     c(SPANE, CSAS), names_to = "y_var", values_to = "y"
   ) %>%
   # Long format on other variables (predictors)
   pivot_longer(
-    c(Hours, Intrinsic, Extrinsic), 
+    c(Hours, hours_est, Intrinsic, Extrinsic), 
     names_to = "x_var", values_to = "x"
   )
 d_riclpm_wide <- d_riclpm_long %>% 
@@ -296,7 +317,7 @@ d_riclpm_wide <- d_riclpm_long %>%
 
 ### Some kind of data figure
 
-```{r}
+```{r riclpm-data-figure, fig.width = 8, fig.height = 6}
 Order <- tibble(
   y_var = c("SPANE", "SPANE", "CSAS", "CSAS"),
   wid = c(2, 3, 2, 3),
@@ -310,6 +331,8 @@ Order <- tibble(
 )
 
 d_riclpm_plots <- d_riclpm_long %>% 
+  # Take out hours per day over 3 for these plots
+  mutate(x = if_else(str_detect(x_var, "ours") & x > 3, NaN, x)) %>% 
   arrange(Game, pid, x_var, wid) %>%
   group_by(Game, pid, x_var, y_var) %>%
   mutate(lag_x = lag(x)) %>%
@@ -318,7 +341,7 @@ d_riclpm_plots <- d_riclpm_long %>%
   filter(wid > 1)
 
 d_riclpm_plots %>% 
-  filter(x_var == "Hours", lag_x <= 3) %>% 
+  filter(x_var == "Hours") %>% 
   ggplot(aes(lag_x, y)) +
   scale_x_continuous(
     "Hours played per day at previous wave",
@@ -344,13 +367,15 @@ d_riclpm_plots %>%
     panel.grid = element_blank(),
     strip.text.x = element_text(size = 8)
   )
-ggsave(
-  here("Output/Figures/Figure-WB-on-Hours.png"), 
-  width = 8, 
-  height = 5
-)
 
 # Plots with other predictors
+p_tmp_0 <- last_plot() %+% 
+  filter(d_riclpm_plots, x_var == "hours_est") +
+  scale_x_continuous(
+    "Estimated hours played per day at previous wave",
+    breaks = pretty_breaks()
+  )
+p_tmp_0
 p_tmp_1 <- last_plot() %+% 
   filter(d_riclpm_plots, x_var == "Intrinsic") +
   scale_x_continuous(
@@ -358,11 +383,6 @@ p_tmp_1 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_1
-ggsave(
-  here("Output/Figures/Figure-WB-on-Intrinsic.png"), 
-  width = 8, 
-  height = 5
-)
 p_tmp_2 <- last_plot() %+% 
   filter(d_riclpm_plots, x_var == "Extrinsic") +
   scale_x_continuous(
@@ -370,18 +390,10 @@ p_tmp_2 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_2
-ggsave(
-  here("Output/Figures/Figure-WB-on-Extrinsic.png"), 
-  width = 8, 
-  height = 5
-)
-# And together?
+```
+
+```{r riclpm-data-figure-2, fig.width = 8, fig.height = 9}
 p_tmp_1 / p_tmp_2
-ggsave(
-  here("Output/Figures/Figure-WB-on-Intrinsic-and-Extrinsic.png"), 
-  width = 8, 
-  height = 9
-)
 ```
 
 ### Fit one model to all data
@@ -504,103 +516,13 @@ pars_riclpm_sep <- fit_riclpm_sep %>%
   select(-fit)
 ```
 
-### Multi-group fit with parameter constraints
-
-```{r}
-riclpm_constrained_multigroup <- "
-  # Create between components (random intercepts)
-  RIx =~ 1*x1 + 1*x2 + 1*x3
-  RIy =~ 1*y1 + 1*y2 + 1*y3
-
-  # Create within-person centered variables
-  wx1 =~ 1*x1
-  wx2 =~ 1*x2
-  wx3 =~ 1*x3
-  wy1 =~ 1*y1
-  wy2 =~ 1*y2
-  wy3 =~ 1*y3
-
-  # Estimate the lagged effects between the within-person centered variables (constrained)
-  # such that each group gets their own coefs
-  wx2 ~ c(bx1, bx2, bx3, bx4)*wx1 + c(gx1, gx2, gx3, gx4)*wy1
-  wy2 ~ c(gy1, gy2, gy3, gy4)*wx1 + c(by1, by2, by3, by4)*wy1
-  wx3 ~ c(bx1, bx2, bx3, bx4)*wx2 + c(gx1, gx2, gx3, gx4)*wy2
-  wy3 ~ c(gy1, gy2, gy3, gy4)*wx2 + c(by1, by2, by3, by4)*wy2
-
-  # Estimate the covariance between the within-person centered
-  # variables at the first wave.
-  wx1 ~~ wy1 # Covariance
-
-  # Estimate the covariances between the residuals of the
-  # within-person centered variables (the innovations).
-  wx2 ~~ wy2
-  wx3 ~~ wy3
-
-  # Estimate the variance and covariance of the random intercepts.
-  RIx ~~ RIx
-  RIy ~~ RIy
-  RIx ~~ RIy
-
-  # Estimate the (residual) variance of the within-person centered variables.
-  wx1 ~~ wx1 # Variances
-  wy1 ~~ wy1
-  wx2 ~~ wx2 # Residual variances
-  wy2 ~~ wy2
-  wx3 ~~ wx3
-  wy3 ~~ wy3
-"
-```
-
-```{r}
-cluster_copy(cluster, "riclpm_constrained_multigroup")
-fit_riclpm_mg <- d_riclpm_wide %>%
-  group_by(y_var, x_var) %>%
-  partition(cluster) %>%
-  summarise(
-    fit = lavaan(
-      riclpm_constrained_multigroup,
-      data = cur_data(),
-      missing = "ml",
-      group = "Game",
-      # group.equal = c(
-      #   "lv.variances", 
-      #   "lv.covariances"
-      # ),
-      meanstructure = TRUE,
-      int.ov.free = TRUE
-    ) %>% list()
-  ) %>% 
-  collect()
-
-pars_riclpm_mg <- fit_riclpm_mg %>%
-  mutate(pars = map(fit, get_lavaan_pars)) %>%
-  mutate(
-    pars = map2(
-      pars, fit,
-      ~ left_join(
-        .x, 
-        tibble(
-          group = 1:length(unique(d_riclpm_wide$Game)), 
-          Game = .y@Data@group.label
-        )
-      )
-    )
-  ) %>%
-  select(-fit)
-```
-
 Look at estimates
 
 ```{r}
 # Table of RICLPM parameters from all models
-pars_riclpm <- pars_riclpm_mg %>%
-  unnest(pars) %>%
-  group_by(y_var, x_var, Game) %>%
-  nest() %>%
-  rename(pars = data) %>%
-  mutate(Model = "Multigroup") %>%
-  bind_rows(pars_riclpm_sep %>% mutate(Model = "Independent")) %>%
-  bind_rows(pars_riclpm_avg %>% mutate(Model = "Average", Game = "Average")) %>%
+pars_riclpm <- pars_riclpm_sep %>% 
+  mutate(Model = "Independent") %>% 
+  bind_rows(pars_riclpm_avg %>% mutate(Model = "Pooled", Game = "Average")) %>%
   ungroup() %>%
   unnest(pars) %>%
   # Take regression parameters at first interval, and 
@@ -642,7 +564,7 @@ last_plot() %+%
 
 Plots of covariance parameters (raw)
 
-```{r}
+```{r riclpm-covariance-parameters, fig.height = 5, fig.width = 8}
 pars_riclpm %>%
   rename(Predictor = x_var, Outcome = y_var) %>% 
   filter(Outcome == "SPANE") %>% 
@@ -661,6 +583,12 @@ pars_riclpm %>%
   geom_pointrangeh(position = position_dodge2v(.5), size = .4) +
   labs(subtitle = "SPANE") +
   facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
+last_plot() %+%
+  (pars_riclpm %>%
+     rename(Predictor = x_var, Outcome = y_var) %>% 
+     filter(Outcome == "CSAS") %>% 
+     filter(Type == "Unstandardized", str_detect(Parameter, " ~~ "))) +
+  labs(subtitle = "CSAS")
 ```
 
 ## Meta-analyses
@@ -677,6 +605,7 @@ fit_riclpm_sep %>%
     names_glue = "{x_var} {.value}"
   ) %>% 
   rename(Outcome = y_var) %>% 
+  arrange(Outcome, Game) %>% 
   kable(caption = "Sample sizes per RICLPM")
 ```
 
@@ -691,43 +620,42 @@ d_ma <- pars_riclpm %>%
   ) %>% 
   select(Type, y_var, x_var, Game, Parameter, est, se, ci.lower, ci.upper)
 
-# This is how many meta-analyses will be conducted
-distinct(d_ma, Type, y_var, x_var, Parameter)
-
-# Compile meta-analytic brms/Stan model
-bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
-fit_ma_empty <- brm(
-  bf_ma,
-  data = d_ma,
-  prior = prior(student_t(7, 0, 0.5), class = "sd", group = "Game") +
-    prior(normal(0, 1), class = "b"),
-  chains = 0,
-  control = list(adapt_delta = .999),
-  file = here("Output/brms/brm-ma-empty")
-)
-
-# Fit meta-analysis separately to each x-y pair X parameter X type X model
-# by updating the compiled model
-# cluster_library(cluster, c("brms", "here", "stringr"))
-# cluster_copy(cluster, "fit_ma_empty")
-fit_ma <- d_ma %>%
-  group_by(x_var, y_var, Parameter, Type) %>%
-  mutate(i = cur_group_id()) %>%
-  # partition(cluster) %>%
-  summarise(
-    fit = list(
-      update(
-        fit_ma_empty,
-        newdata = cur_data(),
-        control = list(adapt_delta = .999),
-        iter = 6500, warmup = 4000, 
-        refresh = 0,
-        file = here(str_glue("Output/brms/brm-ma-{unique(i)}"))
+# Save/load meta-analyses in one file
+file_path <- here("Data", "brms-meta-analyses.rds")
+if (file.exists(file_path)) {
+  fit_ma <- read_rds(file = file_path)
+} else {
+  # Compile meta-analytic brms/Stan model
+  bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+  fit_ma_empty <- brm(
+    bf_ma,
+    data = d_ma,
+    prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
+      prior(normal(0, 0.5), class = "b"),
+    chains = 0,
+    control = list(adapt_delta = .999)
+  )
+  # Fit meta-analyses by updating the compiled model. 
+  cluster_library(cluster, c("brms", "dplyr"))
+  cluster_copy(cluster, "fit_ma_empty")
+  fit_ma <- d_ma %>%
+    group_by(x_var, y_var, Parameter, Type) %>%
+    partition(cluster) %>%
+    summarise(
+      fit = list(
+        update(
+          fit_ma_empty,
+          newdata = cur_data(), 
+          control = list(adapt_delta = .999),
+          iter = 6500, warmup = 4000, 
+          refresh = 0
+        )
       )
-    )
-  ) %>% 
-  # collect() %>% 
-  ungroup()
+    ) %>% 
+    collect() %>%
+    ungroup()
+  write_rds(fit_ma, file = file_path)
+}
 
 # Function to get varying and average effects' posteriors from brmsfit
 get_ma_post <- function(x) {
@@ -742,7 +670,7 @@ get_ma_post <- function(x) {
 
 ### Average effects
 
-This figure shows the average (across games) effects from meta-analyses using the independent lavaan fits, multigroup lavaan fits, and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
+This figure shows the average (across games) effects from meta-analyses of the game-specific lavaan fits (partial pooling) and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
 
 ```{r}
 ma_pars <- fit_ma %>% 
@@ -766,16 +694,17 @@ ma_pars %>%
     "Estimated parameter (95%CI)",
     breaks = pretty_breaks()
   ) +
+  scale_color_discrete("Model") +
   geom_vline(xintercept = 0, lty = 2, size = .25) +
   geom_pointrangeh(
-    aes(xmin = CI_low, xmax = CI_high)
+    aes(xmin = CI_low, xmax = CI_high, color = "Partially pooled")
   ) +
   geom_pointrangeh(
     data = pars_riclpm %>% 
       filter(
         str_detect(Parameter, " ~ "), 
         Type == "Unstandardized", 
-        Model == "Average"
+        Model == "Pooled"
       ),
     aes(x = est, xmin = ci.lower, xmax = ci.upper, color = "Pooled"),
     position = position_nudge(y = .15)
@@ -883,6 +812,7 @@ forest_plot <- function(
   type = "Unstandardized", 
   x_var = "Hours", 
   parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
+  x_limits = c(-0.2, 0.2),
   lavaan = FALSE
 ) {
   out <- object$summary %>%
@@ -893,10 +823,10 @@ forest_plot <- function(
     ) %>%
     # We can use the xintercept mapping to control alpha below
     ggplot(aes(Mean, Game)) +
-    coord_cartesian(xlim = c(-.25, .35)) +
+    coord_cartesian(xlim = x_limits) +
     scale_x_continuous(
       "Estimated cross-lagged effect",
-      breaks = c(-.2, -.1, 0, .1, .2, .3),
+      breaks = pretty_breaks(7),
       expand = expansion(.01)
     ) +
     scale_y_discrete(
@@ -928,12 +858,12 @@ forest_plot <- function(
     # Summary geoms and texts
     geom_pointrangeh(
       aes(x = Mean, xmin = CI_low, xmax = CI_high),
-      size = .5, fatten = 1.5
+      size = .33, fatten = 1.5, position = position_nudge(y = -.01)
     ) +
     # CIs in right margin
     geom_text(
       vjust = -0.5, size = 3, hjust = 1,
-      aes(x = .35, label = Res),
+      aes(x = x_limits[2], label = Res),
       family = Font
     ) +
     # Posterior probability of direction for average
@@ -981,16 +911,25 @@ forest_plot <- function(
 }
 ```
 
-```{r}
+```{r forest-hours-wb, fig.width = 8, fig.height = 5}
 fit_ma_sum <- summarize_ma(fit_ma)
-forest_plot(
+fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
   x_var = "Hours",
-  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-  lavaan = FALSE
+  parameters = c("wy2 ~ wx1"),
+  lavaan = FALSE,
+  x_limits = c(-.3, .4)
 )
-ggsave(here("Output/Figures/Figure-MA-WB-Hours.png"), width = 8, height = 5)
+fp_2 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Hours",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = FALSE,
+  x_limits = c(-.05, .075)
+)
+(fp_1 + theme(axis.title.x = element_blank())) / fp_2
 ```
 
 ```{r}
@@ -1039,41 +978,47 @@ fit_ma %>%
   kable(digits = 3, caption = "ES of average hours per week on WB")
 ```
 
-
 ### Experiences <-> WB
 
 These meta-analyses were conducted above. Now we just need to filter for the correct parameters for plots. They are also shown in the table above. Need to double check that everything has worked so these meta analyses are still a bit of WIP.
 
-```{r}
-forest_plot(
+```{r forest-motivations-wb, fig.width = 8, fig.height = 9}
+fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
   x_var = "Intrinsic",
-  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-  lavaan = TRUE
-)
-
-forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized", 
-  x_var = "Intrinsic",
-  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-  lavaan = FALSE
+  parameters = c("wy2 ~ wx1"),
+  lavaan = FALSE,
+  x_limits = c(-.2, .5)
 ) + 
-  theme(axis.title.x = element_blank()) -
-  forest_plot(
-    object = fit_ma_sum,
-    type = "Unstandardized", 
-    x_var = "Extrinsic",
-    parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-    lavaan = FALSE
-  ) +
-  plot_layout(nrow = 2)
-ggsave(
-  here("Output/Figures/Figure-MA-WB-Motivations.png"), 
-  width = 8, 
-  height = 8
+  theme(axis.title.x = element_blank())
+fp_2 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Intrinsic",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = FALSE,
+  x_limits = c(-.1, .3)
+) +
+  theme(axis.title.x = element_blank())
+fp_3 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Extrinsic",
+  parameters = c("wy2 ~ wx1"),
+  lavaan = FALSE,
+  x_limits = c(-.4, .3)
+) +
+  theme(axis.title.x = element_blank())
+fp_4 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Extrinsic",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = FALSE,
+  x_limits = c(-.4, .3)
 )
+fp_1 / fp_2 / fp_3 / fp_4
 ```
 
 ## Other models
