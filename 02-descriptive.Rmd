@@ -196,7 +196,6 @@ d %>%
 ## System information
 
 ```{r}
-options(width = 120)
 library(sessioninfo)
 session_info()
 ```
