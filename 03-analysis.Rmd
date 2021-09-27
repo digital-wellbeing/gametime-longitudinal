@@ -8,7 +8,6 @@ We first load the required R packages.
 library(knitr)
 library(scales)
 library(janitor)
-library(ggbeeswarm)
 library(ggpp)
 library(gtsummary)
 library(bayestestR)
@@ -22,7 +21,6 @@ library(ggstance)
 library(ggdist)
 library(patchwork)
 library(lavaan)
-library(GGally)
 library(showtext)
 library(multidplyr)
 library(tidyverse)
@@ -196,34 +194,6 @@ parameters_change_over_time %>%
   select(Variable, term, Result) %>% 
   pivot_wider(names_from = term, values_from = Result)
 ```
-
-## Subjective and objective time
-
-```{r}
-d %>% 
-  select(Game, pid, Wave, Objective = Hours, Subjective = hours_est) %>% 
-  filter(Objective < 3, Subjective < 3) %>% 
-  ggplot(aes(Objective, Subjective)) +
-  scale_x_continuous(
-    "Hours played (telemetry)",
-    breaks = pretty_breaks()
-  ) +
-  scale_y_continuous(
-    "Subjectively estimated hours played",
-    breaks = pretty_breaks()
-  ) +
-  geom_abline(intercept = 0, slope = 1, lty = 2, size = .25) +
-  geom_point(size = .2, alpha = .2, shape = 1, col = col1) +
-  stat_centroid() +
-  geom_smooth(
-    method = "lm", size = .4,
-    color = "black",
-    alpha = .33, show.legend = FALSE
-  ) +
-  facet_grid(Wave~Game, margins = TRUE) +
-  theme(aspect.ratio = 1)
-```
-
 
 ## Models
 
@@ -837,7 +807,7 @@ forest_plot <- function(
     scale_fill_brewer(
       palette = "Set1", direction = 1, aesthetics = c("fill", "color")
     ) +
-    scale_alpha_manual(values = c(.33, .66)) +
+    scale_alpha_manual(values = c(.4, .8)) +
     # Vertical line for 0
     geom_vline(xintercept = 0, size = .1, col = "grey60") +
     # Posterior densities
@@ -859,7 +829,7 @@ forest_plot <- function(
     # Summary geoms and texts
     geom_pointrangeh(
       aes(x = Mean, xmin = CI_low, xmax = CI_high),
-      size = .33, fatten = 1.5, position = position_nudge(y = -.01)
+      size = .2, fatten = 1.25, position = position_nudge(y = -.01)
     ) +
     # CIs in right margin
     geom_text(
@@ -1022,11 +992,142 @@ fp_4 <- forest_plot(
 fp_1 / fp_2 / fp_3 / fp_4
 ```
 
-### Subjective time
+### Autocorrelations
+
+```{r}
+forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Hours",
+  parameters = c("wy2 ~ wy1"),
+  lavaan = TRUE,
+  x_limits = c(-.2, .6)
+) + 
+  scale_x_continuous(
+    "Estimated lagged effect", 
+    breaks = pretty_breaks()
+  )
+```
+
+## Subjective time
+
+Comparing subjective hours estimates to objective play behaviour is complicated by the fact that a missing value in objective behaviour indicates zero hours of play, whereas a missing value in estimated time can indicate either an estimated lack of play, or a missing response (e.g. player declined to respond to this item). Therefore any comparison here is done only on individuals who provided subjective estimate data.
+
+Histograms of hours played (behaviour: top, strong; estimated: bottom, light). Only person-waves with both variables present are included.
+
+```{r time-subjective-objective-histogram, fig.height = 7, fig.width = 8}
+tmp <- d %>% 
+  drop_na(Hours, hours_est) %>% 
+  group_by(Game, pid, Wave) %>% 
+  summarise(
+    Hours = sum(Hours, na.rm = T),
+    hours_est = sum(hours_est, na.rm = T)
+  ) %>% 
+  group_by(Game, Wave) %>% 
+  summarise(
+    across(c(Hours, hours_est), .fns = list(m = mean, se = ~sd(.x)/sqrt(length(.x))))
+  )
+
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  drop_na(Hours, hours_est) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  ggplot(aes()) +
+  scale_y_continuous(
+    "Normalised count",
+    breaks = pretty_breaks()
+  ) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  geom_histogram(
+    aes(x = Hours, y = stat(ncount)), 
+    bins = 30, fill = col1, col = "white", alpha = .75
+  ) +
+  geom_histogram(
+    aes(x = hours_est, y = stat(ncount) * -1), 
+    bins = 30, fill = col1, col = "white", alpha = .5
+  ) +
+  geom_pointrangeh(
+    data = tmp, shape = 25, fill = col1,
+    aes(
+      x = Hours_m, 
+      xmin = Hours_m - Hours_se, 
+      xmax = Hours_m + Hours_se, 
+      y = .075
+    )
+  ) +
+  geom_pointrangeh(
+    data = tmp, shape = 24,  fill = col1,
+    aes(
+      x = hours_est_m, 
+      xmin = hours_est_m - hours_est_se, 
+      xmax = hours_est_m + hours_est_se, 
+      y = -.075
+    )
+  ) +
+  facet_grid(Game~Wave, scales = "free")
+```
+
+A scatterplot of subjective on objective time. Only person-waves with both variables present are included.
+
+```{r time-subjective-objective-scatterplot, fig.height = 7, fig.width = 8}
+d %>% 
+  drop_na(Hours, hours_est) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  select(Game, pid, Wave, Objective = Hours, Subjective = hours_est) %>% 
+  ggplot(aes(Objective, Subjective)) +
+  scale_x_continuous(
+    "Hours played per day (behaviour)",
+    breaks = pretty_breaks()
+  ) +
+  scale_y_continuous(
+    "Hours played per day (estimate)",
+    breaks = pretty_breaks()
+  ) +
+  geom_point(size = .2, alpha = .2, shape = 1, col = col1) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, size = .25) +
+  stat_centroid() +
+  geom_smooth(
+    method = "lm", size = .4,
+    color = "black",
+    alpha = .33, show.legend = FALSE
+  ) +
+  facet_grid(Wave~Game, margins = TRUE) +
+  theme(aspect.ratio = 1)
+```
+
+Wave-person differences. Difference indicates estimate - behaviour, so positive numbers indicate overestimates.
+
+```{r}
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  mutate(Difference = hours_est - Hours) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  drop_na(Difference) %>% 
+  ggplot(aes(Difference, Game)) +
+  scale_x_continuous(
+    "Estimation error (hours/day)",
+    breaks = pretty_breaks()
+  ) +
+  coord_cartesian(xlim = c(-1.5, 1.5)) +
+  geom_vline(xintercept = 0, lty = 2, size = .25) +
+  stat_halfeye(point_interval = NULL) +
+  stat_summaryh(fun.data = mean_cl_boot_h) +
+  facet_wrap("Wave", ncol = 1)
+
+# Overall confidence interval for estimation error
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  mutate(Difference = hours_est - Hours) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  drop_na(Difference) %>% 
+  summarise(mean_cl_boot(Difference))
+```
+
+### Meta-analysis
 
 There is one game missing from these meta-analyses because the lavaan model did not converge for that game (due to large number of missing data / small sample size.)
 
-```{r}
+```{r forest-subjective-wb, fig.width = 8, fig.height = 5}
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
@@ -1049,7 +1150,6 @@ fp_1 / fp_2
 ## System information
 
 ```{r}
-options(width = 120)
 library(sessioninfo)
 session_info()
 ```
