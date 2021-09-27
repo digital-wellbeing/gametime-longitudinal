@@ -1120,7 +1120,9 @@ d %>%
   mutate(Difference = hours_est - Hours) %>% 
   filter(Hours < 3, hours_est < 3) %>% 
   drop_na(Difference) %>% 
-  summarise(mean_cl_boot(Difference))
+  group_by(Wave) %>% 
+  summarise(mean_cl_boot(Difference)) %>% 
+  kable(digits = 2, caption = "Estimation errors (Estimated - Behaviour)")
 ```
 
 ### Meta-analysis
