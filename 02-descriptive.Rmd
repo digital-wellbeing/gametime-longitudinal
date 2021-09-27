@@ -45,7 +45,7 @@ data_path <- here("Data", "cleaned_data.rds")
 if(file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
-  stop("'Data/cleaned_data.rds' doesn't exist, run `01-clean.Rmd` to create it.")
+  stop(str_glue("{data_path} doesn't exist, run `01-clean.Rmd` to create it."))
 }
 
 # Make wave a nicely labelled factor
@@ -112,7 +112,7 @@ bind_rows(
 
 Only for actual responses (not rows where survey date was filled to be able to join telemetry)
 
-```{r}
+```{r fig.height = 8}
 d %>%
   filter(Responded) %>% 
   mutate(Date = as_date(StartDate)) %>%
@@ -134,9 +134,9 @@ d %>%
   facet_wrap("Game", scales = "free_y", ncol = 1)
 ```
 
-Response times in BST
+Response times
 
-```{r}
+```{r fig.height = 8, fig.width = 8}
 d %>% 
   filter(Responded) %>% 
   mutate(Hour = hour(StartDate)) %>%
@@ -160,7 +160,7 @@ d %>%
 
 Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
-```{r}
+```{r fig.width = 8, fig.height = 8}
 d %>%
   select(Wave, Game, interval) %>%
   # group_by(Wave) %>%
@@ -191,4 +191,12 @@ d %>%
     breaks = seq(0, 28, by = 7)
   ) +
   facet_grid(Game ~ Wave, scales = "free_y")
+```
+
+## System information
+
+```{r}
+options(width = 120)
+library(sessioninfo)
+session_info()
 ```

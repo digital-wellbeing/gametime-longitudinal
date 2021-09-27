@@ -69,7 +69,7 @@ data_path <- here("Data", "cleaned_data.rds")
 if(file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
-  stop("'Data/cleaned_data.rds' doesn't exist, run `01-clean.Rmd` to create it.")
+  stop(str_glue("{data_path} doesn't exist, run `01-clean.Rmd` to create it."))
 }
 
 # Make wave a nicely labelled factor
@@ -392,7 +392,7 @@ p_tmp_2 <- last_plot() %+%
 p_tmp_2
 ```
 
-```{r riclpm-data-figure-2, fig.width = 8, fig.height = 9}
+```{r riclpm-data-figure-2, fig.width = 8, fig.height = 10}
 p_tmp_1 / p_tmp_2
 ```
 
@@ -621,7 +621,7 @@ d_ma <- pars_riclpm %>%
   select(Type, y_var, x_var, Game, Parameter, est, se, ci.lower, ci.upper)
 
 # Save/load meta-analyses in one file
-file_path <- here("Data", "brms-meta-analyses.rds")
+file_path <- here("Temp", "brms-meta-analyses.rds")
 if (file.exists(file_path)) {
   fit_ma <- read_rds(file = file_path)
 } else {
@@ -726,7 +726,8 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
     x_lab = case_when(
       x_var == "Hours" ~ "Play",
       x_var == "Intrinsic" ~ "Intrinsic",
-      x_var == "Extrinsic" ~ "Extrinsic"
+      x_var == "Extrinsic" ~ "Extrinsic",
+      x_var == "hours_est" ~ "Estimated~hours"
     ),
     y_lab = case_when(
       y_var == "SPANE" ~ "Affect",
@@ -1021,89 +1022,34 @@ fp_4 <- forest_plot(
 fp_1 / fp_2 / fp_3 / fp_4
 ```
 
-## Other models
+### Subjective time
 
-A pretty basic multilevel model.
-
-```{r}
-# Within and between components of each variable
-# Done by game
-d_model <- d %>%
-  select(
-    Game, pid, wid, Wave, Hours, SPANE, CSAS, 
-    Intrinsic = Enjoyment, Extrinsic
-  ) %>%
-  arrange(Game, pid, Wave) %>% 
-  group_by(Game, pid) %>% 
-  mutate(
-    across(
-      c(Hours, Intrinsic, Extrinsic), 
-      .fns = list(lag = ~lag(.)))
-  ) %>% 
-  ungroup() %>% 
-  pivot_longer(
-    c(SPANE, CSAS), 
-    names_to = "Outcome", values_to = "y"
-  ) %>%
-  pivot_longer(
-    c(Hours, Intrinsic, Extrinsic, ends_with("_lag")), 
-    names_to = "Predictor", values_to = "x"
-  ) %>% 
-  group_by(Game, Predictor) %>% 
-  group_split() %>% 
-  map(
-    ~bmlm::isolate(
-      ., 
-      by = "pid", 
-      value = "x", 
-      which = "both"
-    )
-  ) %>% 
-  bind_rows()
-```
+There is one game missing from these meta-analyses because the lavaan model did not converge for that game (due to large number of missing data / small sample size.)
 
 ```{r}
-tmp <- d_model %>%
-  group_by(Game, Outcome, Predictor) %>%
-  summarise(
-    tidy(
-      lmer(y ~ x_cb + x_cw + (1 | pid), data = cur_data()), 
-      "fixed", 
-      conf.int = TRUE
-    )
-  )
-tmp %>% 
-  filter(term != "(Intercept)") %>% 
-  ggplot(aes(estimate, Game, col = term)) +
-  geom_vline(xintercept = 0, lty = 2, size = .25) +
-  geom_pointrangeh(
-    aes(xmin = conf.low, xmax = conf.high),
-    position = position_dodge2v(.4)
-  ) +
-  facet_grid(Predictor~Outcome)
-
-tmp2 <- d_model %>%
-  group_by(Outcome, Predictor) %>%
-  summarise(
-    tidy(
-      lmer(y ~ x_cb + x_cw + (1 | Game/pid), data = cur_data()), 
-      "fixed", 
-      conf.int = TRUE
-    )
-  )
-tmp %>% 
-  ungroup() %>% 
-  bind_rows(
-    tmp2 %>% 
-      mutate(Game = ".Average")
-  ) %>% 
-  filter(term != "(Intercept)") %>% 
-  ggplot(aes(estimate, Game, col = term, shape = abs(statistic)>2)) +
-  geom_vline(xintercept = 0, lty = 2, size = .25) +
-  geom_pointrangeh(
-    aes(xmin = conf.low, xmax = conf.high),
-    position = position_dodge2v(.4)
-  ) +
-  facet_grid(Predictor~Outcome)
+fp_1 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "hours_est",
+  parameters = c("wy2 ~ wx1"),
+  lavaan = TRUE,
+  x_limits = c(-.3, .5)
+)
+fp_2 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "hours_est",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = TRUE,
+  x_limits = c(-.1, .1)
+)
+fp_1 / fp_2
 ```
 
+## System information
+
+```{r}
+options(width = 120)
+library(sessioninfo)
+session_info()
+```

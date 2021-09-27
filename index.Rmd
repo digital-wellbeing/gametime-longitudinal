@@ -4,20 +4,19 @@ author: "Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, & Andy Przybylski"
 date: "`r Sys.Date()`"
 site: bookdown::bookdown_site
 output: bookdown::bs4_book
-documentclass: book
 url: https://digital-wellbeing.github.io/gametime-longitudinal
 # cover-image: path to the social sharing image like images/cover.jpg
 description: |
-  Data analyses related to "Little to no evidence for causal effects between video game play and well-being (Vuorre, Johannes, Magnusson, & Przybylski (2021)"
+  Data analyses supporting "Little to no evidence for causal effects between video game play and well-being (Vuorre, Johannes, Magnusson, & Przybylski, 2021)"
 biblio-style: apalike
 ---
 
 # Preface
 
-This document contains analyses supporting "Little to no evidence for causal effects between video game play and well-being".
+This document contains analyses supporting *Little to no evidence for causal effects between video game play and well-being* (Vuorre, Johannes, Magnusson, & Przybylski, 2021).
 
 - [Preprint](todo)  
-- [OSF Repo](https://osf.io/fb38n/)  
+- [OSF repo](https://osf.io/fb38n/)  
 - [GitHub repo](https://github.com/digital-wellbeing/gametime-longitudinal)  
 - [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal)
 
