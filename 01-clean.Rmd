@@ -648,6 +648,5 @@ write_rds(d, file = here("Data", "cleaned_data.rds"), compress = "gz")
 ## System information
 
 ```{r}
-library(sessioninfo)
-session_info()
+sessionInfo()
 ```

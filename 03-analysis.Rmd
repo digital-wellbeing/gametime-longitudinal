@@ -1168,6 +1168,5 @@ fp_1 / fp_2
 ## System information
 
 ```{r}
-library(sessioninfo)
-session_info()
+sessionInfo()
 ```

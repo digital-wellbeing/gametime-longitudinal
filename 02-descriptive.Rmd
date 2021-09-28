@@ -196,6 +196,5 @@ d %>%
 ## System information
 
 ```{r}
-library(sessioninfo)
-session_info()
+sessionInfo()
 ```
