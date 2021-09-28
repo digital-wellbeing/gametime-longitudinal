@@ -17,13 +17,13 @@ pre code {
 
 @media (min-width: 1200px) {
   .container-fluid {
-    max-width: 120rem;
+    max-width: 110rem;
   }
   .container-fluid .row {
     justify-content: space-evenly;
   }
   .container-fluid main {
-    max-width: 70rem;
+    max-width: 60rem;
   }
   .sidebar {
     max-width: 15rem;
