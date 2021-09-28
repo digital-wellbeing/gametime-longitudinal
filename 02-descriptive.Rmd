@@ -5,15 +5,9 @@ Load the required packages.
 ```{r packages, results = "hide", cache = FALSE}
 library(knitr)
 library(scales)
-library(janitor)
 library(gtsummary)
 library(gt)
-library(broom)
 library(here)
-library(lubridate)
-library(ggtext)
-library(ggstance)
-library(patchwork)
 library(showtext)
 library(tidyverse)
 ```
@@ -130,7 +124,6 @@ d %>%
     "Date",
     date_breaks = "7 day", date_labels = "%b %d", date_minor_breaks = "1 day"
   ) +
-  # geom_text(aes(label = n), nudge_y = 10) +
   facet_wrap("Game", scales = "free_y", ncol = 1)
 ```
 

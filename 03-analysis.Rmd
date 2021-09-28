@@ -7,15 +7,10 @@ We first load the required R packages.
 ```{r packages, results = "hide", cache = FALSE}
 library(knitr)
 library(scales)
-library(janitor)
 library(ggpp)
-library(gtsummary)
 library(bayestestR)
 library(brms)
-library(tidybayes)
-library(broom)
 library(here)
-library(lubridate)
 library(ggtext)
 library(ggstance)
 library(ggdist)
@@ -55,9 +50,6 @@ theme_set(
 )
 col1 <- "#2980b9"
 col2 <- "#2980b9"
-
-# gtsummary tables
-theme_gtsummary_compact()
 ```
 
 We analyse the data cleaned previously.
