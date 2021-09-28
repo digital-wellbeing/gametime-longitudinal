@@ -16,7 +16,7 @@ library(tidyverse)
 
 And then set options for plots, tables, and parallel computations.
 
-```{r}
+```{r, cache = FALSE}
 # Plotting options
 Font <- "Titillium Web"
 font_add_google(Font, Font)
