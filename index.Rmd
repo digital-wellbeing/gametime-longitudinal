@@ -22,7 +22,7 @@ This document contains analyses supporting *Time spent playing video games is un
 
 This repository contains the data and code required to reproduce all analyses reported in our manuscript. In addition, the shared raw data contains many survey and telemetry variables that we did not analyse, but that may be of interest to further analyses of gameplay and well being. These raw data are found in the `Data/` directory of this repository. The code that we used to clean and analyse those data are organised in R Markdown (`.Rmd`) files in this directory, which are meant to be run in the sequence indicated by their numeric prefixes. To run all the cleaning and analyses, and compile the resulting document (this website), run `bookdown::render_book()` in R or click "Build Book" in the RStudio IDE.
 
-```{r additional-packages, include = FALSE, eval = FALSE}
+```{r additional-packages, include = FALSE}
 # These packages loaded here to ensure they are added to renv
 library(downlit)
 ```
