@@ -8,7 +8,6 @@ We first load the required R packages.
 library(knitr)
 library(scales)
 library(janitor)
-library(ggbeeswarm)
 library(ggpp)
 library(gtsummary)
 library(bayestestR)
@@ -22,7 +21,6 @@ library(ggstance)
 library(ggdist)
 library(patchwork)
 library(lavaan)
-library(GGally)
 library(showtext)
 library(multidplyr)
 library(tidyverse)
@@ -69,7 +67,7 @@ data_path <- here("Data", "cleaned_data.rds")
 if(file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
-  stop("'Data/cleaned_data.rds' doesn't exist, run `01-clean.Rmd` to create it.")
+  stop(str_glue("{data_path} doesn't exist, run `01-clean.Rmd` to create it."))
 }
 
 # Make wave a nicely labelled factor
@@ -196,34 +194,6 @@ parameters_change_over_time %>%
   select(Variable, term, Result) %>% 
   pivot_wider(names_from = term, values_from = Result)
 ```
-
-## Subjective and objective time
-
-```{r}
-d %>% 
-  select(Game, pid, Wave, Objective = Hours, Subjective = hours_est) %>% 
-  filter(Objective < 3, Subjective < 3) %>% 
-  ggplot(aes(Objective, Subjective)) +
-  scale_x_continuous(
-    "Hours played (telemetry)",
-    breaks = pretty_breaks()
-  ) +
-  scale_y_continuous(
-    "Subjectively estimated hours played",
-    breaks = pretty_breaks()
-  ) +
-  geom_abline(intercept = 0, slope = 1, lty = 2, size = .25) +
-  geom_point(size = .2, alpha = .2, shape = 1, col = col1) +
-  stat_centroid() +
-  geom_smooth(
-    method = "lm", size = .4,
-    color = "black",
-    alpha = .33, show.legend = FALSE
-  ) +
-  facet_grid(Wave~Game, margins = TRUE) +
-  theme(aspect.ratio = 1)
-```
-
 
 ## Models
 
@@ -392,7 +362,7 @@ p_tmp_2 <- last_plot() %+%
 p_tmp_2
 ```
 
-```{r riclpm-data-figure-2, fig.width = 8, fig.height = 9}
+```{r riclpm-data-figure-2, fig.width = 8, fig.height = 10}
 p_tmp_1 / p_tmp_2
 ```
 
@@ -621,7 +591,7 @@ d_ma <- pars_riclpm %>%
   select(Type, y_var, x_var, Game, Parameter, est, se, ci.lower, ci.upper)
 
 # Save/load meta-analyses in one file
-file_path <- here("Data", "brms-meta-analyses.rds")
+file_path <- here("Temp", "brms-meta-analyses.rds")
 if (file.exists(file_path)) {
   fit_ma <- read_rds(file = file_path)
 } else {
@@ -726,7 +696,8 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
     x_lab = case_when(
       x_var == "Hours" ~ "Play",
       x_var == "Intrinsic" ~ "Intrinsic",
-      x_var == "Extrinsic" ~ "Extrinsic"
+      x_var == "Extrinsic" ~ "Extrinsic",
+      x_var == "hours_est" ~ "Estimated~hours"
     ),
     y_lab = case_when(
       y_var == "SPANE" ~ "Affect",
@@ -836,7 +807,7 @@ forest_plot <- function(
     scale_fill_brewer(
       palette = "Set1", direction = 1, aesthetics = c("fill", "color")
     ) +
-    scale_alpha_manual(values = c(.33, .66)) +
+    scale_alpha_manual(values = c(.4, .8)) +
     # Vertical line for 0
     geom_vline(xintercept = 0, size = .1, col = "grey60") +
     # Posterior densities
@@ -858,7 +829,7 @@ forest_plot <- function(
     # Summary geoms and texts
     geom_pointrangeh(
       aes(x = Mean, xmin = CI_low, xmax = CI_high),
-      size = .33, fatten = 1.5, position = position_nudge(y = -.01)
+      size = .2, fatten = 1.25, position = position_nudge(y = -.01)
     ) +
     # CIs in right margin
     geom_text(
@@ -1021,89 +992,166 @@ fp_4 <- forest_plot(
 fp_1 / fp_2 / fp_3 / fp_4
 ```
 
-## Other models
-
-A pretty basic multilevel model.
+### Autocorrelations
 
 ```{r}
-# Within and between components of each variable
-# Done by game
-d_model <- d %>%
-  select(
-    Game, pid, wid, Wave, Hours, SPANE, CSAS, 
-    Intrinsic = Enjoyment, Extrinsic
-  ) %>%
-  arrange(Game, pid, Wave) %>% 
-  group_by(Game, pid) %>% 
-  mutate(
-    across(
-      c(Hours, Intrinsic, Extrinsic), 
-      .fns = list(lag = ~lag(.)))
-  ) %>% 
-  ungroup() %>% 
-  pivot_longer(
-    c(SPANE, CSAS), 
-    names_to = "Outcome", values_to = "y"
-  ) %>%
-  pivot_longer(
-    c(Hours, Intrinsic, Extrinsic, ends_with("_lag")), 
-    names_to = "Predictor", values_to = "x"
-  ) %>% 
-  group_by(Game, Predictor) %>% 
-  group_split() %>% 
-  map(
-    ~bmlm::isolate(
-      ., 
-      by = "pid", 
-      value = "x", 
-      which = "both"
-    )
-  ) %>% 
-  bind_rows()
+forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "Hours",
+  parameters = c("wy2 ~ wy1"),
+  lavaan = TRUE,
+  x_limits = c(-.2, .6)
+) + 
+  scale_x_continuous(
+    "Estimated lagged effect", 
+    breaks = pretty_breaks()
+  )
 ```
+
+## Subjective time
+
+Comparing subjective hours estimates to objective play behaviour is complicated by the fact that a missing value in objective behaviour indicates zero hours of play, whereas a missing value in estimated time can indicate either an estimated lack of play, or a missing response (e.g. player declined to respond to this item). Therefore any comparison here is done only on individuals who provided subjective estimate data.
+
+Histograms of hours played (behaviour: top, strong; estimated: bottom, light). Only person-waves with both variables present are included.
+
+```{r time-subjective-objective-histogram, fig.height = 7, fig.width = 8}
+tmp <- d %>% 
+  drop_na(Hours, hours_est) %>% 
+  group_by(Game, pid, Wave) %>% 
+  summarise(
+    Hours = sum(Hours, na.rm = T),
+    hours_est = sum(hours_est, na.rm = T)
+  ) %>% 
+  group_by(Game, Wave) %>% 
+  summarise(
+    across(c(Hours, hours_est), .fns = list(m = mean, se = ~sd(.x)/sqrt(length(.x))))
+  )
+
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  drop_na(Hours, hours_est) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  ggplot(aes()) +
+  scale_y_continuous(
+    "Normalised count",
+    breaks = pretty_breaks()
+  ) +
+  scale_x_continuous(breaks = pretty_breaks()) +
+  geom_histogram(
+    aes(x = Hours, y = stat(ncount)), 
+    bins = 30, fill = col1, col = "white", alpha = .75
+  ) +
+  geom_histogram(
+    aes(x = hours_est, y = stat(ncount) * -1), 
+    bins = 30, fill = col1, col = "white", alpha = .5
+  ) +
+  geom_pointrangeh(
+    data = tmp, shape = 25, fill = col1,
+    aes(
+      x = Hours_m, 
+      xmin = Hours_m - Hours_se, 
+      xmax = Hours_m + Hours_se, 
+      y = .075
+    )
+  ) +
+  geom_pointrangeh(
+    data = tmp, shape = 24,  fill = col1,
+    aes(
+      x = hours_est_m, 
+      xmin = hours_est_m - hours_est_se, 
+      xmax = hours_est_m + hours_est_se, 
+      y = -.075
+    )
+  ) +
+  facet_grid(Game~Wave, scales = "free")
+```
+
+A scatterplot of subjective on objective time. Only person-waves with both variables present are included.
+
+```{r time-subjective-objective-scatterplot, fig.height = 7, fig.width = 8}
+d %>% 
+  drop_na(Hours, hours_est) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  select(Game, pid, Wave, Objective = Hours, Subjective = hours_est) %>% 
+  ggplot(aes(Objective, Subjective)) +
+  scale_x_continuous(
+    "Hours played per day (behaviour)",
+    breaks = pretty_breaks()
+  ) +
+  scale_y_continuous(
+    "Hours played per day (estimate)",
+    breaks = pretty_breaks()
+  ) +
+  geom_point(size = .2, alpha = .2, shape = 1, col = col1) +
+  geom_abline(intercept = 0, slope = 1, lty = 2, size = .25) +
+  stat_centroid() +
+  geom_smooth(
+    method = "lm", size = .4,
+    color = "black",
+    alpha = .33, show.legend = FALSE
+  ) +
+  facet_grid(Wave~Game, margins = TRUE) +
+  theme(aspect.ratio = 1)
+```
+
+Wave-person differences. Difference indicates estimate - behaviour, so positive numbers indicate overestimates.
 
 ```{r}
-tmp <- d_model %>%
-  group_by(Game, Outcome, Predictor) %>%
-  summarise(
-    tidy(
-      lmer(y ~ x_cb + x_cw + (1 | pid), data = cur_data()), 
-      "fixed", 
-      conf.int = TRUE
-    )
-  )
-tmp %>% 
-  filter(term != "(Intercept)") %>% 
-  ggplot(aes(estimate, Game, col = term)) +
-  geom_vline(xintercept = 0, lty = 2, size = .25) +
-  geom_pointrangeh(
-    aes(xmin = conf.low, xmax = conf.high),
-    position = position_dodge2v(.4)
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  mutate(Difference = hours_est - Hours) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  drop_na(Difference) %>% 
+  ggplot(aes(Difference, Game)) +
+  scale_x_continuous(
+    "Estimation error (hours/day)",
+    breaks = pretty_breaks()
   ) +
-  facet_grid(Predictor~Outcome)
+  coord_cartesian(xlim = c(-1.5, 1.5)) +
+  geom_vline(xintercept = 0, lty = 2, size = .25) +
+  stat_halfeye(point_interval = NULL) +
+  stat_summaryh(fun.data = mean_cl_boot_h) +
+  facet_wrap("Wave", ncol = 1)
 
-tmp2 <- d_model %>%
-  group_by(Outcome, Predictor) %>%
-  summarise(
-    tidy(
-      lmer(y ~ x_cb + x_cw + (1 | Game/pid), data = cur_data()), 
-      "fixed", 
-      conf.int = TRUE
-    )
-  )
-tmp %>% 
-  ungroup() %>% 
-  bind_rows(
-    tmp2 %>% 
-      mutate(Game = ".Average")
-  ) %>% 
-  filter(term != "(Intercept)") %>% 
-  ggplot(aes(estimate, Game, col = term, shape = abs(statistic)>2)) +
-  geom_vline(xintercept = 0, lty = 2, size = .25) +
-  geom_pointrangeh(
-    aes(xmin = conf.low, xmax = conf.high),
-    position = position_dodge2v(.4)
-  ) +
-  facet_grid(Predictor~Outcome)
+# Overall confidence interval for estimation error
+d %>% 
+  select(Game, pid, Wave, Hours, hours_est) %>% 
+  mutate(Difference = hours_est - Hours) %>% 
+  filter(Hours < 3, hours_est < 3) %>% 
+  drop_na(Difference) %>% 
+  group_by(Wave) %>% 
+  summarise(mean_cl_boot(Difference)) %>% 
+  kable(digits = 2, caption = "Estimation errors (Estimated - Behaviour)")
 ```
 
+### Meta-analysis
+
+There is one game missing from these meta-analyses because the lavaan model did not converge for that game (due to large number of missing data / small sample size.)
+
+```{r forest-subjective-wb, fig.width = 8, fig.height = 5}
+fp_1 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "hours_est",
+  parameters = c("wy2 ~ wx1"),
+  lavaan = TRUE,
+  x_limits = c(-.3, .5)
+)
+fp_2 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized", 
+  x_var = "hours_est",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = TRUE,
+  x_limits = c(-.1, .1)
+)
+fp_1 / fp_2
+```
+
+## System information
+
+```{r}
+library(sessioninfo)
+session_info()
+```

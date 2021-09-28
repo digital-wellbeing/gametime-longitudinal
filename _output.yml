@@ -5,7 +5,8 @@ bookdown::bs4_book:
     subdir: docs
   css: ["bs4_style.css", "style.css"]
   theme:
-    primary: "#096B72"
+    primary: "#0e2050"
+    secondary: "#0e6fab"
     base_font:
       google: Titillium Web
     code_font:
