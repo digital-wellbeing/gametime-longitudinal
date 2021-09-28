@@ -25,4 +25,5 @@ This repository contains the data and code required to reproduce all analyses re
 ```{r additional-packages, include = FALSE}
 # These packages loaded here to ensure they are added to renv
 library(downlit)
+library(Hmisc)
 ```
