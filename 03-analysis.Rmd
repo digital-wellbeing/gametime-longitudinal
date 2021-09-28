@@ -533,7 +533,7 @@ pars_riclpm %>%
   facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
 ```
 
-```{r riclpm-regression-estimates-csas, fig.height = 8, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for CSAS as outcome.}
+```{r riclpm-regression-estimates-csas, fig.height = 8, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for CSAS as outcome."}
 last_plot() %+%
   (pars_riclpm %>%
      rename(Predictor = x_var, Outcome = y_var) %>% 
@@ -969,7 +969,7 @@ fit_ma %>%
 
 These meta-analyses were conducted above. Now we just need to filter for the correct parameters for plots. They are also shown in the table above. Need to double check that everything has worked so these meta analyses are still a bit of WIP.
 
-```{r forest-motivations-wb, fig.width = 8, fig.height = 9, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.}
+```{r forest-motivations-wb, fig.width = 8, fig.height = 9, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
@@ -1010,7 +1010,7 @@ fp_1 / fp_2 / fp_3 / fp_4
 
 ### Autocorrelations
 
-```{r forest-autocorrelations, fig.width = 8, fig.height = 4, fig.cap = "Forest plots of meta-analytic raw lagged regression coefficients from models examining average hours played and well-being, showing only the well-being autocorrelations. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.}
+```{r forest-autocorrelations, fig.width = 8, fig.height = 4, fig.cap = "Forest plots of meta-analytic raw lagged regression coefficients from models examining average hours played and well-being, showing only the well-being autocorrelations. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
@@ -1085,7 +1085,7 @@ d %>%
 
 A scatterplot of subjective on objective time. Only person-waves with both variables present are included.
 
-```{r time-subjective-objective-scatterplot, fig.height = 7, fig.width = 8, fig.cap = "Scatterplots of subjectively estimated average hours of daily play on objective behavioural hours played. Dashed line indicates identity, solid lines are simple regression lines. Small blue points are individual participants, and solid dark points are bivariate sample means.}
+```{r time-subjective-objective-scatterplot, fig.height = 7, fig.width = 8, fig.cap = "Scatterplots of subjectively estimated average hours of daily play on objective behavioural hours played. Dashed line indicates identity, solid lines are simple regression lines. Small blue points are individual participants, and solid dark points are bivariate sample means."}
 d %>% 
   drop_na(Hours, hours_est) %>% 
   filter(Hours < 3, hours_est < 3) %>% 
@@ -1145,7 +1145,7 @@ d %>%
 
 There is one game missing from these meta-analyses because the lavaan model did not converge for that game (due to large number of missing data / small sample size.)
 
-```{r forest-subjective-wb, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.}
+```{r forest-subjective-wb, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
