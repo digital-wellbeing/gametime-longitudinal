@@ -79,7 +79,7 @@ d <- d %>%
 
 ## Univariate analyses
 
-### Key variables over time
+### Variables over time
 
 Note that `played` variable is not useful; it was not collected in waves 2 and 3, and sometimes people did estimate to have time played even though reported not playing :/ 
 We cut the figure for hours at some reasonable value.
@@ -279,7 +279,7 @@ d_riclpm_wide <- d_riclpm_long %>%
 
 ### Cross-lagged scatterplots
 
-```{r riclpm-crosslag-scatter-hours, fig.width = 8, fig.height = 6, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-hours, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
 Order <- tibble(
   y_var = c("SPANE", "SPANE", "CSAS", "CSAS"),
   wid = c(2, 3, 2, 3),
@@ -331,7 +331,7 @@ d_riclpm_plots %>%
   )
 ```
 
-```{r riclpm-crosslag-scatter-hours-estimated, fig.width = 8, fig.height = 6, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on estimated average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-hours-estimated, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on estimated average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
 # Plots with other predictors
 p_tmp_0 <- last_plot() %+% 
   filter(d_riclpm_plots, x_var == "hours_est") +
@@ -342,7 +342,7 @@ p_tmp_0 <- last_plot() %+%
 p_tmp_0
 ```
 
-```{r riclpm-crosslag-scatter-intrinsic, fig.width = 8, fig.height = 6, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-intrinsic, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
 p_tmp_1 <- last_plot() %+% 
   filter(d_riclpm_plots, x_var == "Intrinsic") +
   scale_x_continuous(
@@ -352,7 +352,7 @@ p_tmp_1 <- last_plot() %+%
 p_tmp_1
 ```
 
-```{r riclpm-crosslag-scatter-extrinsic, fig.width = 8, fig.height = 6, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-extrinsic, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
 p_tmp_2 <- last_plot() %+% 
   filter(d_riclpm_plots, x_var == "Extrinsic") +
   scale_x_continuous(
@@ -362,7 +362,7 @@ p_tmp_2 <- last_plot() %+%
 p_tmp_2
 ```
 
-```{r riclpm-crosslag-scatter-motivations, fig.width = 8, fig.height = 6, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-motivations, fig.width = 8, fig.height = 10, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
 p_tmp_1 / p_tmp_2
 ```
 
@@ -957,11 +957,35 @@ fit_ma %>%
   kable(digits = 3, caption = "ES of average hours per week on WB")
 ```
 
+How much of posterior density is within ROPE defined by A&L subjectively noticeable limits?
+
+```{r}
+fit_ma %>% 
+  filter(
+    x_var == "Hours",
+    y_var == "SPANE",
+    Parameter == "wy2 ~ wx1",
+    Type == "Unstandardized"
+  ) %>% 
+  mutate(
+    out = map(
+      fit, 
+      ~describe_posterior(.x, rope_range = c(-.17, .17), rope_ci = 1) %>% 
+        select(-Parameter)
+    )
+  ) %>% 
+  unnest(out) %>% 
+  select(x_var:Type, ROPE_low:ROPE_Percentage) %>% 
+  mutate(ROPE_Percentage = percent(ROPE_Percentage, .1)) %>% 
+  kable(
+    caption = "Play-->SPANE path ROPE.")
+```
+
 ### Experiences <-> WB
 
 These meta-analyses were conducted above. Now we just need to filter for the correct parameters for plots. They are also shown in the table above. Need to double check that everything has worked so these meta analyses are still a bit of WIP.
 
-```{r forest-motivations-wb, fig.width = 8, fig.height = 9, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-motivations-wb-1, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (motivations to well-being). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized", 
@@ -997,7 +1021,11 @@ fp_4 <- forest_plot(
   lavaan = FALSE,
   x_limits = c(-.4, .3)
 )
-fp_1 / fp_2 / fp_3 / fp_4
+fp_1 / fp_3
+```
+
+```{r forest-motivations-wb-2, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (well-being to motivations). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+fp_2 / fp_4
 ```
 
 ### Autocorrelations
@@ -1134,8 +1162,6 @@ d %>%
 ```
 
 ### Meta-analysis
-
-There is one game missing from these meta-analyses because the lavaan model did not converge for that game (due to large number of missing data / small sample size.)
 
 ```{r forest-subjective-wb, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 fp_1 <- forest_plot(
