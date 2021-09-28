@@ -460,7 +460,10 @@ pars_riclpm_avg %>%
   mutate(across(where(is.numeric), ~format(round(.x, 2), nsmall=2))) %>% 
   mutate(Result = str_glue("{est}, [{ci.lower}, {ci.upper}]")) %>% 
   select(y_var, x_var, Parameter, Result) %>% 
-  pivot_wider(names_from = Parameter, values_from = Result)
+  pivot_wider(names_from = Parameter, values_from = Result) %>% 
+  kable(
+    caption = "RICLPM regression parameters from pooled model."
+  )
 ```
 
 ### Separate models per game
@@ -488,7 +491,7 @@ pars_riclpm_sep <- fit_riclpm_sep %>%
 
 Look at estimates
 
-```{r riclpm-regression-estimates-spane, fig.height = 8, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for SPANE as outcome."}
+```{r riclpm-regression-estimates-spane, fig.height = 5, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for SPANE as outcome."}
 # Table of RICLPM parameters from all models
 pars_riclpm <- pars_riclpm_sep %>% 
   mutate(Model = "Independent") %>% 
@@ -525,7 +528,7 @@ pars_riclpm %>%
   facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
 ```
 
-```{r riclpm-regression-estimates-csas, fig.height = 8, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for CSAS as outcome."}
+```{r riclpm-regression-estimates-csas, fig.height = 5, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data. This figure is for CSAS as outcome."}
 last_plot() %+%
   (pars_riclpm %>%
      rename(Predictor = x_var, Outcome = y_var) %>% 
@@ -587,7 +590,7 @@ fit_riclpm_sep %>%
   kable(caption = "Sample sizes per RICLPM")
 ```
 
-Then conduct all meta-analyses (for each y_var-x_var pair, parameter of interest, and type of parameter (standardized, unstandardized)) for both multigroup and independent RICLPMs
+Then conduct all meta-analyses (for each y_var-x_var pair, parameter of interest, and type of parameter (standardized, unstandardized)) of the game-specific RICLPM parameters.
 
 ```{r results='hide', cache = FALSE}
 # Select variables from RICLPM parameters to data for MA
@@ -648,9 +651,9 @@ get_ma_post <- function(x) {
 
 ### Average effects
 
-This figure shows the average (across games) effects from meta-analyses of the game-specific lavaan fits (partial pooling) and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
+This figure shows the average (across games) effects from meta-analyses of the game-specific lavaan fits ("partial pooling") and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
 
-```{r riclpm-ma-lavaan-averages, fig.width = 8, fig.height = 6, fig.cap = "Average RICLPM regression parameters from the pooled and meta-analytic models. Columns are different x variables, and rows different y variables. e.g. wy2 ~ wy1 indicates the lagged effect of y at previous timepoint on y at current timepoint."}
+```{r riclpm-ma-lavaan-averages, fig.width = 8, fig.height = 5, fig.cap = "Average RICLPM regression parameters from the pooled and meta-analytic models. Columns are different x variables, and rows different y variables. e.g. wy2 ~ wy1 indicates the lagged effect of y at previous timepoint on y at current timepoint."}
 ma_pars <- fit_ma %>% 
   mutate(out = map(fit, get_ma_post)) %>% 
   mutate(
@@ -911,7 +914,7 @@ fp_2 <- forest_plot(
 (fp_1 + theme(axis.title.x = element_blank())) / fp_2
 ```
 
-```{r forest-hours-wb+lavaan, fig.width = 8, fig.height = 5, fig.cap = "Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs."}
+```{r forest-hours-wb-lavaan, fig.width = 8, fig.height = 5, fig.cap = "Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs."}
 # Also see in comparison to lavaan model estimates
 forest_plot(
   object = fit_ma_sum,
@@ -982,8 +985,6 @@ fit_ma %>%
 ```
 
 ### Experiences <-> WB
-
-These meta-analyses were conducted above. Now we just need to filter for the correct parameters for plots. They are also shown in the table above. Need to double check that everything has worked so these meta analyses are still a bit of WIP.
 
 ```{r forest-motivations-wb-1, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (motivations to well-being). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
 fp_1 <- forest_plot(
