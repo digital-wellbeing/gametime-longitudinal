@@ -450,7 +450,7 @@ d_t <- d_t %>%
 
 Then look at individual sessions. 
 
-```{r}
+```{r raw-session-duration-histograms, fig.cap = "Histograms of individual session durations before cleaning."}
 d_t %>% 
   ggplot(aes(Hours)) +
   geom_histogram() +

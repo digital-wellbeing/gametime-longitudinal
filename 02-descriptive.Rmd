@@ -112,7 +112,7 @@ bind_rows(
 
 Only for actual responses (not rows where survey date was filled to be able to join telemetry)
 
-```{r fig.height = 8}
+```{r response-date-histograms, fig.height = 8, fig.cap = "Histograms of response dates."}
 d %>%
   filter(Responded) %>% 
   mutate(Date = as_date(StartDate)) %>%
@@ -136,7 +136,7 @@ d %>%
 
 Response times
 
-```{r fig.height = 8, fig.width = 8}
+```{r response-time-histograms, fig.height = 8, fig.width = 8, fig.cap = "Histograms of response times (in UTC)."}
 d %>% 
   filter(Responded) %>% 
   mutate(Hour = hour(StartDate)) %>%
@@ -160,7 +160,7 @@ d %>%
 
 Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
-```{r fig.width = 8, fig.height = 8}
+```{r intervals-between-waves-histogram, fig.width = 8, fig.height = 8, fig.cap = "Histograms of intervals between participants completing the survey waves (in days)."}
 d %>%
   select(Wave, Game, interval) %>%
   # group_by(Wave) %>%
