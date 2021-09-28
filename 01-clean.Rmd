@@ -604,14 +604,14 @@ d <- select(d, -Waves_with_play)
 
 ```{r}
 d %>% 
-  mutate(Over_8h_day_telemetry = Hours/14 > 8) %>% 
-  mutate(Over_8h_day_subjective = hours_est/14 > 8) %>% 
+  mutate(Over_16h_day_telemetry = Hours/14 > 16) %>% 
+  mutate(Over_16h_day_subjective = hours_est/14 > 16) %>% 
   select(Game, starts_with("Over_")) %>% 
   tbl_summary(by = Game) %>% 
   add_overall() %>% 
   as_gt() %>% 
   tab_header(
-    title = "Numbers (%) of person-waves with more than 8h/day of play"
+    title = "Numbers (%) of person-waves with more than 16h/day of play"
   )
 
 d <- d %>% 
