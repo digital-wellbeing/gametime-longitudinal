@@ -11,7 +11,7 @@ This repository ([GitHub](https://osf.io/fb38n/) / [OSF](https://osf.io/fb38n/))
 - [OSF repository](https://osf.io/fb38n/)  
   - An archived permanent copy of the GitHub repository
 - [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal)
-  - 
+  - The output document of our analyses
 
 In addition to raw data, the repository contains many survey and telemetry variables that we did not analyse, but that may be of interest to further analyses of gameplay and well being. 
 
