@@ -855,6 +855,13 @@
       "Repository": "CRAN",
       "Hash": "98138e0994d41508c7a6b84a0600cfcb"
     },
+    "kableExtra": {
+      "Package": "kableExtra",
+      "Version": "1.3.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "49b625e6aabe4c5f091f5850aba8ff78"
+    },
     "knitr": {
       "Package": "knitr",
       "Version": "1.33",
@@ -1492,6 +1499,13 @@
       "Repository": "CRAN",
       "Hash": "894d0aff9585344af4ab78e2b4d60ab7"
     },
+    "svglite": {
+      "Package": "svglite",
+      "Version": "2.0.0",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "8fb6188960bf0f90996ce52f9c2106ac"
+    },
     "sys": {
       "Package": "sys",
       "Version": "3.4",
@@ -1505,6 +1519,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "d5e2db91a3aa1ac242a6edb6b2093eb5"
+    },
+    "systemfonts": {
+      "Package": "systemfonts",
+      "Version": "1.0.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "f2e17ba09737e2e7e2ec40fc1f9b6e08"
     },
     "tensorA": {
       "Package": "tensorA",
@@ -1603,6 +1624,13 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "55e157e2aa88161bdb0754218470d204"
+    },
+    "webshot": {
+      "Package": "webshot",
+      "Version": "0.5.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "e99d80ad34457a4853674e89d5e806de"
     },
     "withr": {
       "Package": "withr",

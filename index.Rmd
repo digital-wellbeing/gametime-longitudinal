@@ -59,4 +59,5 @@ docker run \
 # These packages loaded here to ensure they are added to renv
 library(downlit)
 library(Hmisc)
+library(kableExtra)
 ```
