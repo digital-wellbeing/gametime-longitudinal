@@ -12,6 +12,7 @@ library(gt)
 library(multidplyr)
 library(showtext)
 library(tidyverse)
+library(sessioninfo)
 ```
 
 And then set options for plots, tables, and parallel computations.
