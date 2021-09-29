@@ -19,6 +19,8 @@ library(lavaan)
 library(showtext)
 library(multidplyr)
 library(tidyverse)
+library(tidybayes)
+library(janitor)
 ```
 
 Define plotting, table, and parallel processing options.
