@@ -7,27 +7,27 @@ source(here("R/merge_intervals.R"))
 tmp <- data.frame(
     interval = c(
         interval(
-            as_datetime("2011-12-31 12:00:00"), 
+            as_datetime("2011-12-31 12:00:00"),
             as_datetime("2011-12-31 14:00:00")
-            ), 
+            ),
         interval(
-            as_datetime("2011-12-31 13:00:00"), 
+            as_datetime("2011-12-31 13:00:00"),
             as_datetime("2011-12-31 14:00:00")
         ),
         interval(
-            as_datetime("2011-12-31 13:30:00"), 
+            as_datetime("2011-12-31 13:30:00"),
             as_datetime("2011-12-31 16:00:00")
         ),
         interval(
-            as_datetime("2011-12-31 16:30:00"), 
+            as_datetime("2011-12-31 16:30:00"),
             as_datetime("2011-12-31 17:00:00")
         ),
         interval(
-            as_datetime("2011-12-31 11:00:00"), 
+            as_datetime("2011-12-31 11:00:00"),
             as_datetime("2011-12-31 12:30:00")
         ),
         interval(
-            as_datetime("2011-12-31 11:00:00"), 
+            as_datetime("2011-12-31 11:00:00"),
             as_datetime("2011-12-31 12:30:00")
         )
     )
@@ -52,7 +52,7 @@ test_that("merge_intervals method give expected results", {
 test_that("merged and summed data agree with manual calculation", {
     # a participant with overlapping sessions and negative sessions
     # "raw" data
-    tmp <- t_acnh %>% 
+    tmp <- t_acnh %>%
     filter(pid == "05588dba956d2780") %>%
     arrange(session_start) %>%
     mutate(
@@ -64,10 +64,10 @@ test_that("merged and summed data agree with manual calculation", {
     )
 
     # same participant in cleaned data
-    tmp_cleaned <- d %>% 
+    tmp_cleaned <- d %>%
         filter(pid == "05588dba956d2780") %>%
-        select(StartDate, EndDate, Hours)
-    
+        select(StartDate, Hours)
+
     # only last session belong to wave 1
     # should be approx 1.12 hours
     hours <-  as.numeric(as.duration(tmp$interval_merged[9])) / 3600
@@ -78,7 +78,7 @@ test_that("merged and summed data agree with manual calculation", {
 test_that("duration of merged intervals is shorter or equal", {
     data_path <- here("Temp", "session-overlap-merged.rds")
     d_t <- read_rds(file = data_path)
-    tmp <- d_t %>% 
+    tmp <- d_t %>%
         group_by(pid) %>%
         summarise(
             duration = sum(as.duration(interval), na.rm = TRUE),
