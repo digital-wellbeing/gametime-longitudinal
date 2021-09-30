@@ -8,6 +8,7 @@ knitr::opts_chunk$set(
   error = FALSE,
   message = FALSE,
   fig.align = "center",
+  fig.width = 8,
   dev = "ragg_png",
   fig.retina = 2
 )

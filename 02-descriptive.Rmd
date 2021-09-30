@@ -6,26 +6,24 @@ Load the required packages.
 library(knitr)
 library(scales)
 library(gtsummary)
-library(gt)
+library(kableExtra)
 library(here)
 library(showtext)
 library(tidyverse)
 library(lubridate)
 ```
 
-Plot and table options.
+Figure options.
 
 ```{r}
-# gtsummary table theme
-theme_gtsummary_compact()
-
 # Plotting options
 Font <- "Titillium Web"
 font_add_google(Font, Font)
 theme_set(
   theme_linedraw(
     base_family = Font,
-    base_size = 12) +
+    base_size = 12
+  ) +
     theme(
       panel.grid.minor = element_blank(),
       panel.grid.major.x = element_blank()
@@ -37,7 +35,7 @@ We then load the previously cleaned data table.
 
 ```{r}
 data_path <- here("Data", "cleaned_data.rds")
-if(file.exists(data_path)) {
+if (file.exists(data_path)) {
   d <- read_rds(file = data_path)
 } else {
   stop(str_glue("{data_path} doesn't exist, run `01-clean.Rmd` to create it."))
@@ -52,18 +50,15 @@ d <- d %>%
 
 ```{r}
 d %>%
-  filter(wid == 1) %>% 
+  filter(wid == 1) %>%
   distinct(pid, Game, Age, Experience, Gender) %>%
   select(-pid) %>%
   tbl_summary(by = Game, missing_text = "Missing") %>%
-  add_overall() %>% 
-  bold_labels() %>% 
-  italicize_levels() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Sample demographics",
-    subtitle = "Inclusive of everyone after exclusions"
-  )
+  add_overall() %>%
+  bold_labels() %>%
+  italicize_levels() %>%
+  as_kable_extra(caption = "Sample demographics") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
 ```
 
 ## Survey descriptives
@@ -74,15 +69,15 @@ These are for people after exclusions.
 
 ```{r}
 # Get data on invite dates and Ns
-invites <- read_csv(here("Data", "invites.csv")) %>% 
-  rename(Game = game) %>% 
+invites <- read_csv(here("Data", "invites.csv")) %>%
+  rename(Game = game) %>%
   mutate(Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"))
 # Create a table where wave 0 are number of invites,
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
 # (people who didn't participate in wave 2 showed up at wave 3).
 bind_rows(
-  select(invites, -date), 
+  select(invites, -date),
   d %>% filter(Responded) %>% count(Game, wid)
 ) %>%
   arrange(Game, wid) %>%
@@ -100,7 +95,8 @@ bind_rows(
   ) %>%
   select(Game, Invites:`Wave 3`) %>%
   mutate(across(everything(), ~ str_replace(., "NA", "0"))) %>%
-  kable(caption = "Number of people (response/retention rate) participating at each wave.")
+  kbl(caption = "Number of people (response/retention rate) participating at each wave.") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
 ```
 
 ### Response dates
@@ -109,7 +105,8 @@ Only for actual responses (not rows where survey date was filled to be able to j
 
 ```{r response-date-histograms, fig.height = 8, fig.cap = "Histograms of response dates."}
 d %>%
-  filter(Responded) %>% 
+  # Take only actually responded-to waves
+  filter(Responded) %>%
   mutate(Date = as_date(StartDate)) %>%
   count(Game, Wave, Date) %>%
   ggplot(
@@ -131,8 +128,8 @@ d %>%
 Response times
 
 ```{r response-time-histograms, fig.height = 8, fig.width = 8, fig.cap = "Histograms of response times (in UTC)."}
-d %>% 
-  filter(Responded) %>% 
+d %>%
+  filter(Responded) %>%
   mutate(Hour = hour(StartDate)) %>%
   count(Game, Wave, Hour) %>%
   ggplot(aes(Hour, y = n, fill = Wave)) +
@@ -155,21 +152,25 @@ d %>%
 Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
 ```{r intervals-between-waves-histogram, fig.width = 8, fig.height = 8, fig.cap = "Histograms of intervals between participants completing the survey waves (in days)."}
+# Table
 d %>%
   select(Wave, Game, interval) %>%
   # group_by(Wave) %>%
   filter(Wave != "Wave 1") %>%
   summarise(
     Value = quantile(
-      interval, 
-      probs = c(0, .10, .25, .5, .75, .90, 1), 
-      na.rm=T
-    ) %>% 
+      interval,
+      probs = c(0, .10, .25, .5, .75, .90, 1),
+      na.rm = T
+    ) %>%
       round(3),
     Quantile = percent(c(0, .10, .25, .5, .75, .90, 1))
-  ) %>% 
-  pivot_wider(names_from = Quantile, values_from = Value) %>% 
-  kable(caption = "Interval duration percentiles preceding waves 2 and 3.")
+  ) %>%
+  pivot_wider(names_from = Quantile, values_from = Value) %>%
+  kbl(caption = "Interval duration percentiles preceding waves 2 and 3.") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
+
+# Figure
 d %>%
   filter(Wave != "Wave 1") %>%
   mutate(Wave = fct_drop(Wave)) %>%
