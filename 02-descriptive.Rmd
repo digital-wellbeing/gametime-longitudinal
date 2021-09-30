@@ -159,9 +159,9 @@ d %>%
 Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
 ```{r intervals-between-waves-histogram}
-#| fig.width = 8
-#| fig.height = 8
-#| fig.cap = >
+#| fig.width: 8
+#| fig.height: 8
+#| fig.cap: >
 #|    Histograms of intervals between participants completing the survey waves (in days).
 
 # Table
