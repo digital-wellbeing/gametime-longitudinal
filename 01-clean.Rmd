@@ -1,21 +1,24 @@
 # Data wrangling
 
+Before visualising and modelling, we clean the raw survey and behavioural (telemetry) data. Here, we also "define" participants by excluding from the raw data any individuals who didn't respond to a single survey item, or who didn't have any play data in the six week duration. Lack of play data indicates that they are not "active players", the target population of our study. 
+
 We first load the required R packages.
 
 ```{r packages, results = "hide", cache = FALSE}
 library(knitr)
+library(kableExtra)
 library(janitor)
 library(here)
+library(scales)
 library(lubridate)
 library(gtsummary)
-library(gt)
 library(multidplyr)
 library(showtext)
 library(tidyverse)
 library(sessioninfo)
 ```
 
-And then set options for plots, tables, and parallel computations.
+And then set options for plots and parallel computations.
 
 ```{r, cache = FALSE}
 # Plotting options
@@ -24,19 +27,17 @@ font_add_google(Font, Font)
 theme_set(
   theme_linedraw(
     base_family = Font,
-    base_size = 12) +
+    base_size = 12
+  ) +
     theme(
       panel.grid.minor = element_blank(),
       panel.grid.major.x = element_blank()
     )
 )
 
-# gtsummary table theme
-theme_gtsummary_compact()
-
 # parallel computations
 MAX_CORES <- as.numeric(Sys.getenv("MAX_CORES"))
-if(is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)
+if (is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)
 cluster <- new_cluster(MAX_CORES)
 # load packages on clusters
 cluster_library(cluster, c("dplyr", "lubridate"))
@@ -47,78 +48,87 @@ dir.create("Temp", FALSE)
 
 ## Survey
 
-We first cleaned the raw qualtrics data of sensitive info and placed the resulting table in `Data/qualtrics.csv.gz`. We proceed now to clean that file.
+The table in `Data/qualtrics.csv.gz` contains the raw survey data, except that we have excluded respondents who didn't consent and who withdrew from the study. We proceed now to clean that file.
 
 ```{r}
+# read_csv() automatically decompresses the .gz archive
 d <- read_csv(here("Data", "qualtrics.csv.gz"))
 
-# Rename block & item order variables for easier processing
+# Clean responses to the question asking if they played in past 2 weeks
 d <- d %>%
-  rename(
-    .spane = spane_DO,
-    .pens = pens_needs_DO,
-    .blocks1 = FL_20_DO,
-    .blocks2 = FL_22_DO
-  )
+  mutate(played = factor(!str_detect(played, "NOT")))
 
-# Reports having played?
-d <- d %>%
-  mutate(played = !str_detect(played, "NOT"))
-
-# Estimated time played
+# Create estimated time played variable from reported hours & mins
 d <- d %>%
   mutate(minutes = minutes / 60) %>%
-  mutate(hours_est = rowSums(select(., hours, minutes), na.rm = TRUE)) %>%
+  mutate(
+    hours_est = rowSums(select(., hours, minutes), na.rm = TRUE)
+  ) %>%
   # sum above returns 0 if both hours and minutes are NA, fix here:
-  mutate(hours_est = ifelse(is.na(hours) & is.na(minutes), NA, hours_est)) %>%
+  mutate(
+    hours_est = if_else(is.na(hours) & is.na(minutes), NaN, hours_est)
+  ) %>%
   select(-minutes, -hours)
 
-# Scale responses
+# Ensure correct ordering and variable type of item responses
+spane_levels <- c(
+  "Very rarely or never",
+  "Rarely",
+  "Occasionally",
+  "Sometimes",
+  "Frequently",
+  "Often",
+  "Very often or always"
+)
+pens_levels <- c(
+  "Strongly disagree",
+  "Disagree",
+  "Somewhat disagree",
+  "Neither agree nor disagree",
+  "Somewhat agree",
+  "Agree",
+  "Strongly agree"
+)
 d <- d %>%
   mutate(
     across(
       starts_with("spane_"),
-      function(x) 
+      function(x) {
         factor(
-          x, 
-          levels = c(
-            "Very rarely or never", 
-            "Rarely", 
-            "Occasionally", 
-            "Sometimes", 
-            "Frequently", 
-            "Often", 
-            "Very often or always"
-          )
+          x,
+          levels = spane_levels
         )
+      }
     )
   )
 d <- d %>%
   mutate(
     across(
       starts_with("pens_"),
-      function(x) 
+      function(x) {
         factor(
-          x, 
-          levels = c(
-            "Strongly disagree", 
-            "Disagree", 
-            "Somewhat disagree", 
-            "Neither agree nor disagree", 
-            "Somewhat agree", 
-            "Agree", 
-            "Strongly agree"
-          )
+          x,
+          levels = pens_levels
         )
+      }
     )
   )
+
+# Convert item responses to numbers
 d <- d %>%
   mutate(
-    across(c(starts_with("spane_"), starts_with("pens_")), as.numeric)
+    across(
+      c(starts_with("spane_"), starts_with("pens_")),
+      as.numeric
+    )
   )
 
-# Reverse scored items
-reverse_items <- c("pens_needs_9", "pens_motivations_2", "pens_motivations_3")
+# Reverse reverse-scored items
+reverse_items <- c(
+  "pens_needs_9",
+  "pens_motivations_2",
+  "pens_motivations_3"
+)
 d <- d %>%
   mutate(
     across(all_of(reverse_items), ~ 8 - .x)
@@ -130,24 +140,41 @@ spane_neg_items <- paste0("spane_", c(2, 4, 6, 8, 9, 11))
 autonomy_items <- paste0("pens_needs_", 1:3)
 competence_items <- paste0("pens_needs_", 4:6)
 relatedness_items <- paste0("pens_needs_", 7:9)
-enjoyment_items <- paste0("pens_motivations_", 1:4)
+intrinsic_items <- paste0("pens_motivations_", 1:4)
 extrinsic_items <- paste0("pens_motivations_", 5:8)
 
-# Create scale scores
+# Create (sub)scale scores (means of item responses)
 d <- d %>%
   mutate(
-    spane_pos = rowMeans(select(., all_of(spane_pos_items)), na.rm = TRUE),
-    spane_neg = rowMeans(select(., all_of(spane_neg_items)), na.rm = TRUE),
-    spane = spane_pos - spane_neg,
-    enjoyment = rowMeans(select(., all_of(enjoyment_items)), na.rm = TRUE),
-    extrinsic = rowMeans(select(., all_of(extrinsic_items)), na.rm = TRUE),
-    needs = rowMeans(
-      select(., all_of(c(autonomy_items, competence_items))),
+    spane_pos = rowMeans(
+      select(., all_of(spane_pos_items)),
       na.rm = TRUE
     ),
-    autonomy = rowMeans(select(., all_of(autonomy_items)), na.rm = TRUE),
-    competence = rowMeans(select(., all_of(competence_items)), na.rm = TRUE),
-    relatedness = rowMeans(select(., all_of(relatedness_items)), na.rm = TRUE),
+    spane_neg = rowMeans(
+      select(., all_of(spane_neg_items)),
+      na.rm = TRUE
+    ),
+    spane = spane_pos - spane_neg,
+    intrinsic = rowMeans(
+      select(., all_of(intrinsic_items)),
+      na.rm = TRUE
+    ),
+    extrinsic = rowMeans(
+      select(., all_of(extrinsic_items)),
+      na.rm = TRUE
+    ),
+    autonomy = rowMeans(
+      select(., all_of(autonomy_items)),
+      na.rm = TRUE
+    ),
+    competence = rowMeans(
+      select(., all_of(competence_items)),
+      na.rm = TRUE
+    ),
+    relatedness = rowMeans(
+      select(., all_of(relatedness_items)),
+      na.rm = TRUE
+    ),
   )
 ```
 
@@ -159,12 +186,12 @@ d <- d %>%
   select(
     -all_of(
       c(
-        spane_pos_items, 
-        spane_neg_items, 
-        autonomy_items, 
-        competence_items, 
-        relatedness_items, 
-        enjoyment_items, 
+        spane_pos_items,
+        spane_neg_items,
+        autonomy_items,
+        competence_items,
+        relatedness_items,
+        intrinsic_items,
         extrinsic_items
       )
     )
@@ -182,64 +209,71 @@ d <- d %>%
 
 # Prettier names for tables/figures
 d <- d %>%
-  rename_with(
-    str_to_upper,
-    c(starts_with("spane"), csas)
+  rename(
+    Affect = spane,
+    `Life satisfaction` = csas
   ) %>%
   rename_with(
     str_to_title,
-    c(age, gender, experience, game, company, enjoyment:relatedness)
+    c(played:experience, game, company, intrinsic:relatedness)
   )
+
+# Make table easier to look at by including only variables we need
+# in a reasonable order
+d <- d %>%
+  select(
+    Game, pid, wid,
+    Affect, `Life satisfaction`,
+    Intrinsic, Extrinsic, hours_est,
+    StartDate, Age, Gender, Experience
+  ) %>%
+  arrange(Game, pid, wid)
 ```
 
 ### Exclude non-responders
 
-At this point we remove all who did not respond at any wave. This defines a participant in combination with telemetry, below.
+At this point we remove all who did not respond to any items at any wave. For example there were "participants" who had simply clicked the consent buttons and then exited the survey. This defines a participant in combination with telemetry, below. (It is best to run this up here to speed up some computations below.)
 
 ```{r}
-d <- d %>% 
-  arrange(Game, pid, wid)
 # Person-wave level indicator if person answered any survey questions at wave
 d$Responded <- apply(
-  select(d, starts_with("SPANE"), CSAS, Enjoyment, Extrinsic), 1,
+  select(d, Affect, `Life satisfaction`, Intrinsic, Extrinsic), 1,
   function(x) sum(!is.na(x)) > 0
 )
 
 # Person-level indicator of how many waves responded to
-d <- d %>% 
-  group_by(Game, pid) %>% 
+d <- d %>%
+  group_by(Game, pid) %>%
   mutate(
-    Waves_with_response = sum(Responded)
-  ) %>% 
+    `# of waves with response` = sum(Responded),
+    `Any waves with response` = factor(`# of waves with response` > 0)
+  ) %>%
   ungroup()
 
 # Table of waves answered to by game
-d %>% 
-  distinct(Game, pid, Waves_with_response) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Counts of participants responding to survey at X waves.",
-    subtitle = "Inclusive of everyone before any exclusions."
+d %>%
+  distinct(
+    Game, pid,
+    `# of waves with response`,
+    `Any waves with response`
+  ) %>%
+  select(-pid) %>%
+  tbl_summary(by = Game) %>%
+  add_overall() %>%
+  as_kable_extra(
+    caption = "Summary of participants with and without responses."
   )
 
 # Take out all who didn't answer a single wave
-d <- filter(d, Waves_with_response > 0)
+d <- filter(d, `Any waves with response` == "TRUE")
 
-# Remove the waves answered indicator
-d <- select(d, -Waves_with_response)
+# Remove the indicators
+d <- select(d, -`# of waves with response`, -`Any waves with response`)
 ```
 
 Calculate the exact interval between survey waves for each person x wave
 
-```{r cache = FALSE}
-# Explicitly cache slow computation results
-data_path <- here("Temp", "survey-intervals.rds")
-if(file.exists(data_path)) {
-  survey_intervals <- read_rds(file = data_path)
-} else {
+```{r}
 survey_intervals <- d %>%
   select(Game, pid, wid, StartDate) %>%
   arrange(pid, wid) %>%
@@ -251,25 +285,24 @@ survey_intervals <- d %>%
   partition(cluster) %>%
   # Interval between waves in days
   mutate(
-    interval = (as.numeric(StartDate) - as.numeric(lag(StartDate))) / 3600 / 24
+    interval = (as.numeric(StartDate) - as.numeric(lag(StartDate))) /
+      3600 / 24
   ) %>%
   collect() %>%
   ungroup() %>%
   select(wid, pid, Game, interval)
-  write_rds(survey_intervals, file = data_path)
-}
 d <- left_join(d, survey_intervals)
 ```
 
+We then have a clean table of the relevant survey responses, ready to be joined with the game play behaviour data (telemetry), below.
+
 ## Telemetry
 
-We first load the data sets, saved in game-specific files. 
-
-Apex Legends data is at the player by match level: Each row indicates the start and end time of a match for that particular player. Note there's a lot of information in that table but we only use the session times.
+We first load the game behaviour data sets, saved in game-specific compressed comma-separated value files. 
 
 ```{r telemetry-load-data}
 # Animal Crossing
-t_acnh <- read_csv(here("Data", "telemetry-acnh.csv.gz")) %>% 
+t_acnh <- read_csv(here("Data", "telemetry-acnh.csv.gz")) %>%
   mutate(Game = "AC:NH")
 
 # Apex Legends
@@ -289,15 +322,15 @@ t_al <- t_al %>%
 
 # Forza Horizon 4
 t_fh <- read_csv(here("Data", "telemetry-forza-horizon-4.csv.gz"))
-t_fh <- t_fh %>% 
+t_fh <- t_fh %>%
   mutate(
     session_start = parse_date_time(session_start, "%m/%d/%Y %I:%M:%S %p"),
     session_end = parse_date_time(session_end, "%m/%d/%Y %I:%M:%S %p")
-  ) %>% 
+  ) %>%
   mutate(Game = "Forza Horizon 4")
 
 # Gran Turismo
-t_gts <- read_csv(here("Data", "telemetry-gran-turismo-sport.csv.gz")) %>% 
+t_gts <- read_csv(here("Data", "telemetry-gran-turismo-sport.csv.gz")) %>%
   mutate(
     Game = "Gran Turismo Sport",
     pid = as.character(pid)
@@ -306,8 +339,8 @@ t_gts <- read_csv(here("Data", "telemetry-gran-turismo-sport.csv.gz")) %>%
 # Outriders
 t_or <- read_csv(here("Data", "telemetry-outriders.csv.gz"))
 # Select relevant variables
-t_or <- t_or %>% 
-  select(pid, session_start, session_end) %>% 
+t_or <- t_or %>%
+  select(pid, session_start, session_end) %>%
   mutate(Game = "Outriders")
 ```
 
@@ -320,7 +353,54 @@ d_t <- bind_rows(
 )
 ```
 
-### Overlapping sessions
+### Clean sessions
+
+Calculate hours played for each session
+
+```{r}
+d_t <- d_t %>%
+  mutate(
+    interval = interval(session_start, session_end)
+  ) %>%
+  mutate(Hours = as.numeric(as.duration(interval)) / 3600)
+```
+
+A table of the ranges of the raw session durations reveals some implausible values, which can happen e.g. when a device's clock is improperly configured. We therefore remove bad sessions (ones that were outside the total measurement window, that had negative durations or durations greater than 10 hours.)
+
+```{r}
+# Create indicators for implausible timestamps
+d_t <- d_t %>%
+  mutate(
+    `Session under 0h` = Hours < 0,
+    `Session over 10h` = Hours > 10,
+    `Session before` = session_end < min(d$StartDate) - days(14),
+    `Session after` = session_start > max(d$StartDate)
+  )
+
+# Show a table of raw sessions and potential bad sessions
+d_t %>%
+  select(Game, Hours, starts_with("Session ")) %>%
+  tbl_summary(
+    by = Game,
+    statistic = list(all_continuous() ~ "{median} ({min}, {max})")
+  ) %>%
+  add_overall() %>%
+  as_kable_extra(caption = "Summaries of raw session durations")
+
+# Then remove flagged sessions from data
+d_t <- d_t %>%
+  filter(
+    between(Hours, 0, 10),
+    !`Session before`,
+    !`Session after`
+  )
+
+# And now unnecessary variables
+d_t <- d_t %>% 
+  select(-starts_with("Session "))
+```
+
+#### Overlapping sessions
 
 Deal with potentially overlapping sessions. A function to do this.
 
@@ -331,31 +411,31 @@ Deal with potentially overlapping sessions. A function to do this.
 #'      - set int2 to NA
 #' if not intersect:
 #'      - return original intervals
-#' 
+#'
 #' @return vector of int1, int2
 merge_interval <- function(int2, int1) {
-  if(!is.na(intersect(int1, int2))) {
+  if (!is.na(intersect(int1, int2))) {
     int1 <- union(int1, int2)
     int2 <- as.interval(NA)
     out <- c(int1, int2)
   } else {
     out <- c(int1, int2)
   }
-  
+
   out
 }
 
 # Merge all overlapping intervals in df
 merge_intervals_all <- function(interval, .pb = NULL) {
-  if(!is.null(.pb)) .pb$tick()$print()
+  if (!is.null(.pb)) .pb$tick()$print()
   interval2 <- interval
   tot_rows <- length(interval)
-  for(i in seq_along(interval2)) {
+  for (i in seq_along(interval2)) {
     int1 <- interval2[i]
-    if(is.na(int1)) next
-    if(i < tot_rows) {
-      for(j in (i + 1):tot_rows) {
-        #cat("i: ", i, ", j: ", j, "\n")
+    if (is.na(int1)) next
+    if (i < tot_rows) {
+      for (j in (i + 1):tot_rows) {
+        # cat("i: ", i, ", j: ", j, "\n")
         int2 <- interval2[j]
         merged <- merge_interval(int2, int1)
         int1 <- merged[1]
@@ -363,35 +443,12 @@ merge_intervals_all <- function(interval, .pb = NULL) {
         interval2[j] <- merged[2]
         # we break the loop at the first non-overlapping interval
         # data must be sorted by `session_start` for this to work
-        if(!is.na(merged[2])) break
+        if (!is.na(merged[2])) break
       }
     }
   }
   interval2
 }
-
-```
-
-Remove all negative sessions before merging sessions.
-
-```{r}
-d_t %>% 
-  group_by(Game) %>% 
-  mutate(
-    interval = interval(session_start, session_end),
-    duration = as.duration(interval)
-  ) %>%
-  mutate(
-    Session_under_0h = duration < 0,
-  ) %>% 
-  select(Game, "Session_under_0h") %>% 
-  tbl_summary(by = Game)
-
-d_t <- d_t %>% 
-  mutate(
-    interval = interval(session_start, session_end)
-  ) %>%
-  filter(as.duration(interval) > 0)
 ```
 
 Then merge all overlapping sessions for a given participant.
@@ -399,7 +456,7 @@ Then merge all overlapping sessions for a given participant.
 ```{r merge-sessions, cache = FALSE}
 # explicitly cache
 data_path <- here("Temp", "session-overlap-merged.rds")
-if(file.exists(data_path)) {
+if (file.exists(data_path)) {
   message("Loading cached data")
   d_t <- read_rds(file = data_path)
 } else {
@@ -409,14 +466,14 @@ if(file.exists(data_path)) {
   cluster_copy(cluster, c("merge_interval", "merge_intervals_all"))
   d_t <- d_t %>%
     group_by(pid, Game) %>%
-    partition(cluster) %>% 
+    partition(cluster) %>%
     mutate(
       interval = interval(session_start, session_end)
     ) %>%
     arrange(session_start, session_end, .by_group = TRUE) %>%
     mutate(interval_merged = merge_intervals_all(interval)) %>%
-    collect() %>% 
-    ungroup() 
+    collect() %>%
+    ungroup()
   write_rds(d_t, file = data_path)
 }
 ```
@@ -424,112 +481,77 @@ if(file.exists(data_path)) {
 Examples of overlapping sessions
 
 ```{r}
-d_t %>% 
-  arrange(session_start, session_end) %>% 
-  filter(pid == "de9b7f238ba168b0") %>% 
-  mutate(interval = interval(session_start, session_end)) %>% 
+d_t %>%
+  arrange(session_start, session_end) %>%
+  filter(pid == "de9b7f238ba168b0") %>%
+  mutate(interval = interval(session_start, session_end)) %>%
   mutate(overlaps = int_overlaps(interval, lag(interval)))
 ```
 
 We then replace the original intervals with the new ones (dropping many rows that are now redundant and set to NA)
 
 ```{r}
-d_t <- d_t %>% 
-  select(-interval) %>% 
-  rename(interval = interval_merged) %>% 
+d_t <- d_t %>%
+  select(-interval) %>%
+  rename(interval = interval_merged) %>%
   drop_na(interval)
 ```
 
-### Process sessions
-
-Create an hours variable from intervals
-
-```{r}
-d_t <- d_t %>% 
-  mutate(Hours = as.numeric(as.duration(interval))/3600)
-```
-
-Then look at individual sessions. 
-
-```{r raw-session-duration-histograms, fig.cap = "Histograms of individual session durations before cleaning."}
-d_t %>% 
-  ggplot(aes(Hours)) +
-  geom_histogram() +
-  scale_y_log10() +
-  facet_wrap("Game", scales = "free")
-```
-
-Drop all sessions greater than 10 hours in duration.
-
-```{r}
-d_t %>% 
-  group_by(Game) %>% 
-  mutate(
-    is_over_10 = Hours > 10
-  ) %>% 
-  select(Game, starts_with("is_")) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall()
-
-d_t <- d_t %>% 
-  filter(between(Hours, 0, 10))
-```
-
-Then correlate sessions to waves. 
+### Correlate sessions to waves. 
 
 ```{r}
 # Correlate game sessions to waves
 # Start by expanding the survey data to include NAs for waves with no responses. This enables using telemetry for waves where survey wasn't completed.
 
 # Complete data for all pid-wid combinations (all pids have 3 rows; new rows have NAs for all other variables)
-d <- d %>% 
+d <- d %>%
   complete(nesting(Game, pid), wid)
 
 # If a survey wasn't responded to, replace start date with previous wave's date + two weeks. Enables creating a two-week window preceding "survey response" to count hours played.
-d <- d %>% 
-  arrange(Game, pid, wid) %>% 
-  group_by(Game, pid) %>% 
+d <- d %>%
+  arrange(Game, pid, wid) %>%
+  group_by(Game, pid) %>%
   partition(cluster) %>%
   # Fill potential missing wave 2 with wave 1 + 14
   mutate(
     StartDate = if_else(
-      is.na(StartDate), 
-      lag(StartDate, 1) + days(14), 
+      is.na(StartDate),
+      lag(StartDate, 1) + days(14),
       StartDate
     )
-  ) %>% 
+  ) %>%
   # Fill potential missing wave 3 with wave 2 + 14
   mutate(
     StartDate = if_else(
-      is.na(StartDate), 
-      lag(StartDate, 1) + days(14), 
+      is.na(StartDate),
+      lag(StartDate, 1) + days(14),
       StartDate
     )
-  ) %>% 
-  collect() %>% 
+  ) %>%
+  collect() %>%
   ungroup()
 
-# The survey data frame now has a row for each participant-wave, even when survey wasn't answered by that participant at that wave. 
+# The survey data frame now has a row for each participant-wave, even when survey wasn't answered by that participant at that wave.
 
 # Join all play sessions to every wave of each player
 d_t <- d %>%
-  select(Game, pid, wid, StartDate) %>% 
+  select(Game, pid, wid, StartDate) %>%
   left_join(d_t)
 
 # Then keep only those sessions that were in the time window:
 # Is session start and/or end within time window (2 weeks preceding survey)
-d_t <- d_t %>% 
+d_t <- d_t %>%
   mutate(
-    start_in = session_start %within% 
+    start_in = session_start %within%
       interval(StartDate - days(14), StartDate),
-    end_in = session_end %within% 
+    end_in = session_end %within%
       interval(StartDate - days(14), StartDate)
-  ) 
-d_t <- d_t %>% 
+  )
+d_t <- d_t %>%
   filter(start_in | end_in)
 
 # Exact duration depends on if session was completely in window or partially
-d_t <- d_t %>% 
+d_t <- d_t %>%
   mutate(
     Hours = case_when(
       # Entire session in window: All time counts
@@ -539,9 +561,27 @@ d_t <- d_t %>%
       # Started in window, ended after: Session start to end of window
       start_in & !end_in ~ StartDate - session_start
     )
-  ) %>% 
+  ) %>%
   mutate(Hours = as.numeric(Hours) / 3600)
 ```
+
+### Histogram of session durations
+
+Then look at individual sessions' durations. 
+
+```{r session-duration-histograms, fig.cap = "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."}
+d_t %>%
+  ggplot(aes(Hours)) +
+  geom_histogram() +
+  scale_x_continuous(
+    "Duration (in hours) of individual sessions",
+    breaks = pretty_breaks()
+  ) +
+  scale_y_continuous(expand = expansion(c(0, .1))) +
+  facet_wrap("Game", scales = "free", ncol = 2)
+```
+
+### Aggregate session durations
 
 Aggregate to sum hours for each wave
 
@@ -552,18 +592,20 @@ d_t <- d_t %>%
   group_by(Game, pid, wid) %>%
   summarise(
     Sessions = sum(!is.na(Hours)),
-    Hours = sum(Hours, na.rm = TRUE)  # is 0 if all Hours are NA
+    Hours = sum(Hours, na.rm = TRUE) # is 0 if all Hours are NA
   ) %>%
   ungroup()
 ```
+
+### Merge telemetry to survey data
 
 ```{r}
 # Join back to survey data
 d <- left_join(d, d_t)
 
-# This creates NA hours for people who didn't exist in telemetry, 
+# This creates NA hours for people who didn't exist in telemetry,
 # thus we can replace NAs with zeros.
-d <- d %>% 
+d <- d %>%
   mutate(Hours = replace_na(Hours, 0))
 ```
 
@@ -571,28 +613,24 @@ d <- d %>%
 
 ```{r}
 # Indicator if person played at wave
-d <- d %>% 
+d <- d %>%
   mutate(Played = Hours > 0)
 
 # Create participant-level indicator of whether there was any telemetry
-d <- d %>% 
-  group_by(Game, pid) %>% 
+d <- d %>%
+  group_by(Game, pid) %>%
   mutate(
     Waves_with_play = sum(Played)
-  ) %>% 
+  ) %>%
   ungroup()
 
 # Table of waves with play by game
-d %>% 
-  distinct(Game, pid, Waves_with_play) %>% 
-  select(-pid) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Counts of people with play at X waves",
-    subtitle = "Inclusive of everyone with survey responses"
-  )
+d %>%
+  distinct(Game, pid, Waves_with_play) %>%
+  select(-pid) %>%
+  tbl_summary(by = Game) %>%
+  add_overall() %>%
+  as_kable_extra(caption = "Counts of people with play at X waves")
 
 # Take out all who didn't answer a single wave
 d <- filter(d, Waves_with_play > 0)
@@ -604,21 +642,20 @@ d <- select(d, -Waves_with_play)
 ### Exclude extreme player-wave hours played
 
 ```{r}
-d %>% 
-  mutate(Over_16h_day_telemetry = Hours/14 > 16) %>% 
-  mutate(Over_16h_day_subjective = hours_est/14 > 16) %>% 
-  select(Game, starts_with("Over_")) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Numbers (%) of person-waves with more than 16h/day of play"
+d %>%
+  mutate(Over_16h_day_telemetry = Hours / 14 > 16) %>%
+  mutate(Over_16h_day_subjective = hours_est / 14 > 16) %>%
+  select(Game, starts_with("Over_")) %>%
+  tbl_summary(by = Game) %>%
+  add_overall() %>%
+  as_kable_extra(
+    caption = "Numbers (%) of person-waves with more than 16h/day of play"
   )
 
-d <- d %>% 
+d <- d %>%
   mutate(
-    Hours = if_else(Hours/14 > 8, NaN, Hours),
-    hours_est = if_else(hours_est/14 > 8, NaN, hours_est)
+    Hours = if_else(Hours / 14 > 8, NaN, Hours),
+    hours_est = if_else(hours_est / 14 > 8, NaN, hours_est)
   )
 ```
 
@@ -627,16 +664,15 @@ d <- d %>%
 Participants could complete the survey waves whenever after receiving the invitation emails. Therefore participants could e.g. complete wave 3 and then be reminded to go back to the wave 2 invitation email and do it. We therefore exclude all person-waves with negative intervals. We do this here so that the full join could be performed above. Note, interval is NA if the wave wasn't completed, resulting to unknown values below.
 
 ```{r}
-d %>% 
-  mutate(Negative_interval = interval < 0) %>% 
-  select(Game, Negative_interval) %>% 
-  tbl_summary(by = Game) %>% 
-  add_overall() %>% 
-  as_gt() %>% 
-  tab_header(
-    title = "Numbers (%) of person-waves with negative intervals"
+d %>%
+  mutate(Negative_interval = interval < 0) %>%
+  select(Game, Negative_interval) %>%
+  tbl_summary(by = Game) %>%
+  add_overall() %>%
+  as_kable_extra(
+    caption = "Numbers (%) of person-waves with negative intervals"
   )
-d <- d %>% 
+d <- d %>%
   filter(interval > 0 | is.na(interval))
 ```
 
