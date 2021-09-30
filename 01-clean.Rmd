@@ -262,7 +262,8 @@ d %>%
   add_overall() %>%
   as_kable_extra(
     caption = "Summary of participants with and without responses."
-  )
+  ) %>% 
+  kable_classic(font_size = 11)
 
 # Take out all who didn't answer a single wave
 d <- filter(d, `Any waves with response` == "TRUE")
@@ -353,6 +354,10 @@ d_t <- bind_rows(
 )
 ```
 
+### A note on Apex Legends sessions
+
+Apex Legends "sessions" are individual matches, and therefore actual gameplay sessions are longer in duration and consist of many matches. Therefore looking at individual session durations or counting the number of "sessions" for Apex Legends is misleading. If the individual sessions are of interest, you should first aggregate the matches to sessions by e.g. merging all matches that occur within say 5 minutes of each other. 
+
 ### Clean sessions
 
 Calculate hours played for each session
@@ -385,7 +390,8 @@ d_t %>%
     statistic = list(all_continuous() ~ "{median} ({min}, {max})")
   ) %>%
   add_overall() %>%
-  as_kable_extra(caption = "Summaries of raw session durations")
+  as_kable_extra(caption = "Summaries of raw session durations") %>% 
+  kable_classic(font_size = 11)
 
 # Then remove flagged sessions from data
 d_t <- d_t %>%
@@ -442,21 +448,32 @@ d_t %>%
   arrange(session_start, session_end) %>%
   filter(pid == "de9b7f238ba168b0") %>%
   mutate(interval = interval(session_start, session_end)) %>%
-  mutate(overlaps = int_overlaps(interval, lag(interval)))
+  mutate(overlaps = int_overlaps(interval, lag(interval))) %>% 
+  head() %>% 
+  kbl() %>% 
+  kable_classic(font_size = 11)
 ```
 
-We then replace the original intervals with the new ones (dropping many rows that are now redundant and set to NA)
+We then replace the original intervals with the new ones (dropping many rows that are now redundant and set to NA), and then remove the now possibly invalid start and end times and durations (this corrected information is now contained in `interval`).
 
 ```{r}
 d_t <- d_t %>% 
   select(-interval) %>% 
   rename(interval = interval_merged) %>% 
-  drop_na(interval)
+  drop_na(interval) %>% 
+  select(Game, pid, interval)
 ```
 
-### Correlate sessions to waves. 
+We then re-remove sessions longer than 10h, which could have been created due to merging.
 
 ```{r}
+d_t <- d_t %>% 
+  filter(as.numeric(as.duration(interval))/3600 <= 10)
+```
+
+### Correlate sessions to waves
+
+```{r correlate-sessions-waves}
 # Correlate game sessions to waves
 # Start by expanding the survey data to include NAs for waves with no responses. This enables using telemetry for waves where survey wasn't completed.
 
@@ -495,13 +512,13 @@ d_t <- d %>%
   select(Game, pid, wid, StartDate) %>%
   left_join(d_t)
 
-# Then keep only those sessions that were in the time window:
-# Is session start and/or end within time window (2 weeks preceding survey)
+# Then keep only those sessions that were in that wave's time window:
+# Is session start and/or end within 0-2 weeks preceding survey?
 d_t <- d_t %>%
   mutate(
-    start_in = session_start %within%
+    start_in = int_start(interval) %within%
       interval(StartDate - days(14), StartDate),
-    end_in = session_end %within%
+    end_in = int_end(interval) %within%
       interval(StartDate - days(14), StartDate)
   )
 d_t <- d_t %>%
@@ -512,21 +529,23 @@ d_t <- d_t %>%
   mutate(
     Hours = case_when(
       # Entire session in window: All time counts
-      start_in & end_in ~ session_end - session_start,
+      start_in & end_in ~ as.duration(interval),
       # Started before window, ended within: start of window to end of session
-      !start_in & end_in ~ session_end - (StartDate - days(14)),
+      !start_in & end_in ~ as.duration(
+        int_end(interval) - (StartDate - days(14))
+      ),
       # Started in window, ended after: Session start to end of window
-      start_in & !end_in ~ StartDate - session_start
+      start_in & !end_in ~ as.duration(StartDate - int_start(interval))
     )
   ) %>%
   mutate(Hours = as.numeric(Hours) / 3600)
 ```
 
-### Histogram of session durations
+### Histograms of session durations
 
-Then look at individual sessions' durations. 
+Then look at individual sessions' durations. Recall that Apex Legends sessions are individual matches so they will look a lot shorter.
 
-```{r session-duration-histograms, fig.cap = "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."}
+```{r session-duration-histograms, fig.height = 6, fig.width = 8, fig.cap = "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."}
 d_t %>%
   ggplot(aes(Hours)) +
   geom_histogram() +
@@ -554,6 +573,19 @@ d_t <- d_t %>%
   ungroup()
 ```
 
+These are the average session numbers and hours played in the total study period
+
+```{r}
+d_t %>% 
+  select(-pid, -wid) %>% 
+  tbl_summary(by = Game) %>% 
+  add_overall() %>% 
+  as_kable_extra(
+    caption = "Average session numbers and hours played in the whole study"
+  ) %>% 
+  kable_classic(font_size = 11)
+```
+
 ### Merge telemetry to survey data
 
 ```{r}
@@ -577,23 +609,31 @@ d <- d %>%
 d <- d %>%
   group_by(Game, pid) %>%
   mutate(
-    Waves_with_play = sum(Played)
+    `# of waves with play` = sum(Played),
+    `Any waves with play` = factor(`# of waves with play` > 0)
   ) %>%
   ungroup()
 
 # Table of waves with play by game
 d %>%
-  distinct(Game, pid, Waves_with_play) %>%
+  distinct(
+    Game, pid,
+    `# of waves with play`,
+    `Any waves with play`
+  ) %>%
   select(-pid) %>%
   tbl_summary(by = Game) %>%
   add_overall() %>%
-  as_kable_extra(caption = "Counts of people with play at X waves")
+  as_kable_extra(
+    caption = "Summary of participants with and without responses."
+  ) %>% 
+  kable_classic(font_size = 11)
 
 # Take out all who didn't answer a single wave
-d <- filter(d, Waves_with_play > 0)
+d <- filter(d, `Any waves with play` == "TRUE")
 
-# Remove the waves answered indicator
-d <- select(d, -Waves_with_play)
+# Remove the indicators
+d <- select(d, -`# of waves with play`, -`Any waves with play`)
 ```
 
 ### Exclude extreme player-wave hours played
@@ -607,7 +647,8 @@ d %>%
   add_overall() %>%
   as_kable_extra(
     caption = "Numbers (%) of person-waves with more than 16h/day of play"
-  )
+  ) %>% 
+  kable_classic(font_size = 11)
 
 d <- d %>%
   mutate(
@@ -616,7 +657,7 @@ d <- d %>%
   )
 ```
 
-### Exclude bad intervals
+## Exclude bad survey intervals
 
 Participants could complete the survey waves whenever after receiving the invitation emails. Therefore participants could e.g. complete wave 3 and then be reminded to go back to the wave 2 invitation email and do it. We therefore exclude all person-waves with negative intervals. We do this here so that the full join could be performed above. Note, interval is NA if the wave wasn't completed, resulting to unknown values below.
 
@@ -628,7 +669,8 @@ d %>%
   add_overall() %>%
   as_kable_extra(
     caption = "Numbers (%) of person-waves with negative intervals"
-  )
+  ) %>% 
+  kable_classic(font_size = 11)
 d <- d %>%
   filter(interval > 0 | is.na(interval))
 ```
@@ -638,8 +680,10 @@ d <- d %>%
 write_rds(d, file = here("Data", "cleaned_data.rds"), compress = "gz")
 ```
 
+## Test data cleaning
+
 Run some tests on the cleaned data.
-```{r, include = FALSE, cache = FALSE}
+```{r test-cleaning, cache = FALSE}
 library(testthat)
 test_dir(here("R/tests/testthat"))
 ```
