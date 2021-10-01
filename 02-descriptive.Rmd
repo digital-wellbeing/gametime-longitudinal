@@ -2,7 +2,10 @@
 
 Load the required packages.
 
-```{r packages, results = "hide", cache = FALSE}
+```{r packages}
+#| results: 'hide'
+#| cache: FALSE
+
 library(knitr)
 library(scales)
 library(gtsummary)
@@ -15,7 +18,7 @@ library(lubridate)
 
 Figure options.
 
-```{r}
+```{r settings}
 # Plotting options
 Font <- "Titillium Web"
 font_add_google(Font, Font)
@@ -33,7 +36,7 @@ theme_set(
 
 We then load the previously cleaned data table.
 
-```{r}
+```{r data-load}
 data_path <- here("Data", "cleaned_data.rds")
 if (file.exists(data_path)) {
   d <- read_rds(file = data_path)
@@ -48,7 +51,7 @@ d <- d %>%
 
 ## Demographics after exclusions
 
-```{r}
+```{r demographics-table}
 d %>%
   filter(wid == 1) %>%
   distinct(pid, Game, Age, Experience, Gender) %>%
@@ -67,7 +70,7 @@ These are for people after exclusions.
 
 ### Response rate & retention
 
-```{r}
+```{r response-rate-table}
 # Get data on invite dates and Ns
 invites <- read_csv(here("Data", "invites.csv")) %>%
   rename(Game = game) %>%
@@ -132,7 +135,6 @@ Response times
 
 ```{r response-time-histograms}
 #| fig.height: 8
-#| fig.width: 8
 #| fig.cap: "Histograms of response times (in UTC)."
 
 d %>%
@@ -159,7 +161,6 @@ d %>%
 Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before.
 
 ```{r intervals-between-waves-histogram}
-#| fig.width: 8
 #| fig.height: 8
 #| fig.cap: >
 #|    Histograms of intervals between participants completing the survey waves (in days).

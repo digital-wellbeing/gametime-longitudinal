@@ -4,7 +4,10 @@ Before visualising and modelling, we clean the raw survey and behavioural (telem
 
 We first load the required R packages.
 
-```{r packages, results = "hide", cache = FALSE}
+```{r packages}
+#| results: 'hide'
+#| cache: FALSE
+
 library(knitr)
 library(kableExtra)
 library(janitor)
@@ -20,7 +23,9 @@ library(sessioninfo)
 
 And then set options for plots and parallel computations.
 
-```{r, cache = FALSE}
+```{r settings}
+#| cache: FALSE
+
 # Plotting options
 Font <- "Titillium Web"
 font_add_google(Font, Font)
@@ -50,7 +55,7 @@ dir.create("Temp", FALSE)
 
 The table in `Data/qualtrics.csv.gz` contains the raw survey data, except that we have excluded respondents who didn't consent and who withdrew from the study. We proceed now to clean that file.
 
-```{r}
+```{r data-survey-clean}
 # read_csv() automatically decompresses the .gz archive
 d <- read_csv(here("Data", "qualtrics.csv.gz"))
 
@@ -176,12 +181,8 @@ d <- d %>%
       na.rm = TRUE
     ),
   )
-```
 
-We then remove and rename variables
-
-```{r}
-# Remove items
+# Then remove and rename variables
 d <- d %>%
   select(
     -all_of(
@@ -234,7 +235,7 @@ d <- d %>%
 
 At this point we remove all who did not respond to any items at any wave. For example there were "participants" who had simply clicked the consent buttons and then exited the survey. This defines a participant in combination with telemetry, below. (It is best to run this up here to speed up some computations below.)
 
-```{r}
+```{r exclude-non-responders}
 # Person-wave level indicator if person answered any survey questions at wave
 d$Responded <- apply(
   select(d, Affect, `Life satisfaction`, Intrinsic, Extrinsic), 1,
@@ -274,7 +275,7 @@ d <- select(d, -`# of waves with response`, -`Any waves with response`)
 
 Calculate the exact interval between survey waves for each person x wave
 
-```{r}
+```{r survey-intervals-calculate}
 survey_intervals <- d %>%
   select(Game, pid, wid, StartDate) %>%
   arrange(pid, wid) %>%
@@ -301,7 +302,7 @@ We then have a clean table of the relevant survey responses, ready to be joined 
 
 We first load the game behaviour data sets, saved in game-specific compressed comma-separated value files. 
 
-```{r telemetry-load-data}
+```{r data-telemetry-load}
 # Animal Crossing
 t_acnh <- read_csv(here("Data", "telemetry-acnh.csv.gz")) %>%
   mutate(Game = "AC:NH")
@@ -347,7 +348,7 @@ t_or <- t_or %>%
 
 Merge games tables to one table
 
-```{r}
+```{r data-telemetry-merge}
 # Merge games' telemetry to one table
 d_t <- bind_rows(
   t_acnh, t_al, t_fh, t_gts, t_or
@@ -362,7 +363,7 @@ Apex Legends "sessions" are individual matches, and therefore actual gameplay se
 
 Calculate hours played for each session
 
-```{r}
+```{r calculate-hours}
 d_t <- d_t %>%
   mutate(
     interval = interval(session_start, session_end)
@@ -372,7 +373,7 @@ d_t <- d_t %>%
 
 A table of the ranges of the raw session durations reveals some implausible values, which can happen e.g. when a device's clock is improperly configured. We therefore remove bad sessions (ones that were outside the total measurement window, that had negative durations or durations greater than 10 hours.)
 
-```{r}
+```{r clean-sessions}
 # Create indicators for implausible timestamps
 d_t <- d_t %>%
   mutate(
@@ -443,7 +444,7 @@ if (file.exists(data_path)) {
 
 Examples of overlapping sessions
 
-```{r}
+```{r overlapping-sessions-example}
 d_t %>%
   arrange(session_start, session_end) %>%
   filter(pid == "de9b7f238ba168b0") %>%
@@ -545,7 +546,11 @@ d_t <- d_t %>%
 
 Then look at individual sessions' durations. Recall that Apex Legends sessions are individual matches so they will look a lot shorter.
 
-```{r session-duration-histograms, fig.height = 6, fig.width = 8, fig.cap = "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."}
+```{r session-duration-histograms}
+#| fig.height: 6
+#| fig.cap: >
+#|  "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."
+
 d_t %>%
   ggplot(aes(Hours)) +
   geom_histogram() +
@@ -561,7 +566,7 @@ d_t %>%
 
 Aggregate to sum hours for each wave
 
-```{r}
+```{r hours-aggregate-sessions}
 # Summarise per wave to sum hours and number of sessions
 # this also sets sum hours to zero for people with no telemetry
 d_t <- d_t %>%
@@ -588,7 +593,7 @@ d_t %>%
 
 ### Merge telemetry to survey data
 
-```{r}
+```{r data-merge-survey-telemetry}
 # Join back to survey data
 d <- left_join(d, d_t)
 
@@ -600,7 +605,7 @@ d <- d %>%
 
 ### Exclude participants with no telemetry
 
-```{r}
+```{r exclude-no-telemetry}
 # Indicator if person played at wave
 d <- d %>%
   mutate(Played = Hours > 0)
@@ -638,7 +643,7 @@ d <- select(d, -`# of waves with play`, -`Any waves with play`)
 
 ### Exclude extreme player-wave hours played
 
-```{r}
+```{r exclude-extreme-wave-hours}
 d %>%
   mutate(Over_16h_day_telemetry = Hours / 14 > 16) %>%
   mutate(Over_16h_day_subjective = hours_est / 14 > 16) %>%
@@ -661,7 +666,7 @@ d <- d %>%
 
 Participants could complete the survey waves whenever after receiving the invitation emails. Therefore participants could e.g. complete wave 3 and then be reminded to go back to the wave 2 invitation email and do it. We therefore exclude all person-waves with negative intervals. We do this here so that the full join could be performed above. Note, interval is NA if the wave wasn't completed, resulting to unknown values below.
 
-```{r}
+```{r exclude-survey-intervals}
 d %>%
   mutate(Negative_interval = interval < 0) %>%
   select(Game, Negative_interval) %>%
@@ -676,14 +681,16 @@ d <- d %>%
 ```
 
 ## Save cleaned data
-```{r}
+
+```{r data-clean-save}
 write_rds(d, file = here("Data", "cleaned_data.rds"), compress = "gz")
 ```
 
 ## Test data cleaning
 
 Run some tests on the cleaned data.
-```{r test-cleaning, cache = FALSE}
+```{r test-cleaning}
+#| cache: FALSE
 library(testthat)
 test_dir(here("R/tests/testthat"))
 ```

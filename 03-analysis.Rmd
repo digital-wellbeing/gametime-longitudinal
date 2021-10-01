@@ -4,7 +4,10 @@ This document contains the main analyses presented in the manuscript.
 
 We first load the required R packages.
 
-```{r packages, results = "hide", cache = FALSE}
+```{r packages}
+#| results: 'hide'
+#| cache: FALSE
+
 library(knitr)
 library(scales)
 library(DT)
@@ -27,7 +30,9 @@ library(janitor)
 
 Define plotting, table, and parallel processing options.
 
-```{r settings, cache = FALSE}
+```{r settings}
+#| cache: FALSE
+
 # parallel computations
 MAX_CORES <- as.numeric(Sys.getenv("MAX_CORES"))
 if (is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)
@@ -59,7 +64,7 @@ col2 <- "#2980b9"
 
 We analyse the data cleaned previously.
 
-```{r}
+```{r data-load}
 data_path <- here("Data", "cleaned_data.rds")
 if (file.exists(data_path)) {
   d <- read_rds(file = data_path)
@@ -74,7 +79,7 @@ d <- d %>%
 
 For all analyses, game time indicates average number of hours per day. The telemetry indicates total hours in the two week window, so we divide that by 14 to talk about average hours per day.
 
-```{r}
+```{r hours-per-day-transform}
 d <- d %>%
   mutate(
     Hours = Hours / 14,
@@ -90,10 +95,16 @@ Hours played per week is cut at a reasonable value for the figures:
 d %>%
   mutate(Hours_over_3 = Hours > 3) %>%
   tabyl(Hours_over_3) %>%
-  adorn_pct_formatting()
+  adorn_pct_formatting() %>% 
+  kbl(caption = "Table of hours excluded from figure") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
 ```
 
-```{r variables-over-time, fig.width = 8, fig.height = 8, fig.cap = "Density plots of key variables over time for each game."}
+```{r variables-over-time}
+#| fig.height: 8
+#| fig.cap: >
+#|  "Density plots of key variables over time."
+
 tmp <- d %>%
   select(
     Game, Wave, pid,
@@ -164,7 +175,7 @@ tmp %>%
 
 Then take a look at a simple model of change over time for each variable. Note that we can't use varying slopes with lmer because there's not enough data, so just random intercepts for players.
 
-```{r}
+```{r model-variables-over-time}
 library(lme4)
 library(broom.mixed)
 parameters_change_over_time <- d %>%
@@ -196,7 +207,11 @@ parameters_change_over_time %>%
 
 Regression coefficients (standardized and raw) of well-being predicted from game play need satisfaction, and intrinsic motivation (enjoyment).
 
-```{r simple-regression-coefficients, fig.width = 8, fig.height = 8, fig.cap = "Bivariate regression coefficients of models predicting well-being. Columns indicate predictors, and the two rows are the different well-being outcome variables."}
+```{r simple-regression-coefficients}
+#| fig.height: 7
+#| fig.cap: >
+#|  "Bivariate regression coefficients of models predicting well-being. Columns indicate predictors, and the two rows are the different well-being outcome variables."
+
 d %>%
   select(
     Game, pid, wid, Wave,
@@ -238,22 +253,24 @@ d %>%
   geom_pointrangeh(
     aes(xmin = conf.low, xmax = conf.high),
     size = .4,
-    position = position_dodge2v(.3)
+    position = position_dodge2v(.35)
   ) +
   facet_grid(Outcome ~ Predictor, scales = "free_x") +
   theme(
-    axis.title.x = element_markdown(),
-    axis.title.y = element_blank(),
-    legend.position = "bottom",
-    legend.title = element_blank()
-  )
+    legend.position = "bottom"
+  ) +
+  guides(
+    shape = guide_legend(direction = "vertical"),
+    color = guide_legend(direction = "vertical")
+  ) +
+  theme(legend.position = "bottom")
 ```
 
 ## RICLPM
 
 Wrangle data to a format where lavaan model is easier to map to variable pairs: Wide format with different rows for outcomes (well-being) and predictors (hours, needs, motivations).
 
-```{r}
+```{r riclpm-data-transform}
 d_riclpm_long <- d %>%
   select(
     Game, pid, wid,
@@ -277,7 +294,11 @@ d_riclpm_wide <- d_riclpm_long %>%
 
 ### Cross-lagged scatterplots
 
-```{r riclpm-crosslag-scatter-hours, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-hours}
+#| fig.height: 6.5
+#| fig.cap: >
+#|  "Scatterplots of well-being (rows indicate variables and waves) on average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."
+
 Order <- tibble(
   y_var = rep(c("Affect", "Life satisfaction"), each = 2),
   wid = c(2, 3, 2, 3),
@@ -329,7 +350,11 @@ d_riclpm_plots %>%
   )
 ```
 
-```{r riclpm-crosslag-scatter-hours-estimated, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on estimated average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-hours-estimated}
+#| fig.height: 6.5
+#| fig.cap: >
+#|  "Scatterplots of well-being (rows indicate variables and waves) on estimated average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs."
+
 # Plots with other predictors
 p_tmp_0 <- last_plot() %+%
   filter(d_riclpm_plots, x_var == "hours_est") +
@@ -340,7 +365,11 @@ p_tmp_0 <- last_plot() %+%
 p_tmp_0
 ```
 
-```{r riclpm-crosslag-scatter-intrinsic, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-intrinsic}
+#| fig.height: 6.5
+#| fig.cap: >
+#|  "Scatterplots of well-being (rows indicate variables and waves) on intrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."
+
 p_tmp_1 <- last_plot() %+%
   filter(d_riclpm_plots, x_var == "Intrinsic") +
   scale_x_continuous(
@@ -350,7 +379,11 @@ p_tmp_1 <- last_plot() %+%
 p_tmp_1
 ```
 
-```{r riclpm-crosslag-scatter-extrinsic, fig.width = 8, fig.height = 6.5, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-extrinsic}
+#| fig.height: 6.5
+#| fig.cap: >
+#|  "Scatterplots of well-being (rows indicate variables and waves) on extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."
+
 p_tmp_2 <- last_plot() %+%
   filter(d_riclpm_plots, x_var == "Extrinsic") +
   scale_x_continuous(
@@ -360,7 +393,11 @@ p_tmp_2 <- last_plot() %+%
 p_tmp_2
 ```
 
-```{r riclpm-crosslag-scatter-motivations, fig.width = 8, fig.height = 12, fig.cap = "Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."}
+```{r riclpm-crosslag-scatter-motivations}
+#| fig.height: 12
+#| fig.cap: >
+#|  "Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs."
+
 p_tmp_1 / p_tmp_2
 ```
 
@@ -370,7 +407,7 @@ First fit RICLPM to all data. Separately to the two well-being outcomes, and eac
 
 Syntax based on <https://jeroendmulder.github.io/RI-CLPM/lavaan.html>
 
-```{r}
+```{r riclpm-define-model}
 riclpm_constrained <- "
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3
@@ -414,7 +451,7 @@ riclpm_constrained <- "
 "
 ```
 
-```{r}
+```{r riclpm-estimate-pooled}
 cluster_copy(cluster, "riclpm_constrained")
 fit_riclpm_all <- d_riclpm_wide %>%
   group_by(y_var, x_var) %>%
@@ -447,7 +484,7 @@ pars_riclpm_avg <- fit_riclpm_all %>%
   select(-fit)
 ```
 
-```{r}
+```{r riclpm-pooled-table}
 pars_riclpm_avg %>%
   ungroup() %>%
   unnest(pars) %>%
@@ -469,7 +506,7 @@ pars_riclpm_avg %>%
 
 Fit the above model separately to each game.
 
-```{r}
+```{r riclpm-estimate-separate}
 fit_riclpm_sep <- d_riclpm_wide %>%
   group_by(y_var, x_var, Game) %>%
   partition(cluster) %>%
@@ -490,7 +527,11 @@ pars_riclpm_sep <- fit_riclpm_sep %>%
 
 Look at estimates
 
-```{r riclpm-regression-estimates, fig.height = 5, fig.width = 8, fig.cap = "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data."}
+```{r riclpm-regression-estimates}
+#| fig.height: 7
+#| fig.cap: >
+#|  "RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data."
+
 # Table of RICLPM parameters from all models
 pars_riclpm <- pars_riclpm_sep %>%
   mutate(Model = "Independent") %>%
@@ -521,13 +562,22 @@ pars_riclpm %>%
     breaks = pretty_breaks()
   ) +
   geom_vline(xintercept = 0, size = .2, lty = 2) +
-  geom_pointrangeh(position = position_dodge2v(.5), size = .4) +
-  facet_grid(Parameter ~ Predictor, scales = "free_x", labeller = label_both)
+  geom_pointrangeh(position = position_dodge2v(.6), size = .4) +
+  facet_grid(Parameter ~ Predictor, scales = "free_x") +
+  guides(
+    shape = guide_legend(direction = "vertical"),
+    color = guide_legend(direction = "vertical")
+  ) +
+  theme(legend.position = "bottom")
 ```
 
 Plots of covariance parameters (raw)
 
-```{r riclpm-covariance-estimates, fig.height = 5, fig.width = 8, fig.cap = "RICLPM raw covariance parameter estimates, legend as above."}
+```{r riclpm-covariance-estimates}
+#| fig.height: 7
+#| fig.cap: >
+#|  "RICLPM raw covariance parameter estimates, legend as above."
+
 pars_riclpm %>%
   rename(Predictor = x_var, Outcome = y_var) %>%
   filter(
@@ -555,16 +605,20 @@ pars_riclpm %>%
   ) +
   facet_grid(
     Parameter ~ Predictor,
-    scales = "free_x",
-    labeller = label_both
-  )
+    scales = "free_x"
+  ) +
+  guides(
+    shape = guide_legend(direction = "vertical"),
+    color = guide_legend(direction = "vertical")
+  ) +
+  theme(legend.position = "bottom")
 ```
 
 ## Meta-analyses
 
 Number of observations/participants per model
 
-```{r}
+```{r table-n-per-meta-analysis}
 fit_riclpm_sep %>%
   mutate(N = map_dbl(fit, nobs) %>% comma()) %>%
   select(-fit) %>%
@@ -581,7 +635,10 @@ fit_riclpm_sep %>%
 
 Then conduct all meta-analyses (for each y_var-x_var pair, parameter of interest, and type of parameter (standardized, unstandardized)) of the game-specific RICLPM parameters.
 
-```{r fit-meta-analyses, results = 'hide', cache = FALSE}
+```{r fit-meta-analyses}
+#| results: 'hide'
+#| cache: FALSE
+
 # Select variables from RICLPM parameters to data for MA
 d_ma <- pars_riclpm %>%
   filter(
@@ -642,7 +699,7 @@ get_ma_post <- function(x) {
 
 All the resulting parameters are listed in the table below.
 
-```{r}
+```{r meta-analysis-parameter-table}
 # Table of all parameters from meta-analyses
 ma_pars <- fit_ma %>%
   mutate(out = map(fit, get_ma_post)) %>%
@@ -677,7 +734,11 @@ ma_pars %>%
 
 This figure shows the average (across games) effects from meta-analyses of the game-specific lavaan fits ("partial pooling") and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
 
-```{r riclpm-ma-lavaan-averages, fig.width = 8, fig.height = 5, fig.cap = "Average RICLPM regression parameters from the pooled and meta-analytic models. Columns are different x variables, and rows different y variables. e.g. wy2 ~ wy1 indicates the lagged effect of y at previous timepoint on y at current timepoint."}
+```{r riclpm-ma-lavaan-averages}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Average RICLPM regression parameters from the pooled and meta-analytic models. Columns are different x variables, and rows different y variables. e.g. wy2 ~ wy1 indicates the lagged effect of y at previous timepoint on y at current timepoint."
+
 ma_pars %>%
   filter(Game == "Average", Type == "Unstandardized") %>%
   ggplot(aes(Mean, Parameter)) +
@@ -700,14 +761,18 @@ ma_pars %>%
     aes(x = est, xmin = ci.lower, xmax = ci.upper, color = "Pooled"),
     position = position_nudge(y = .15)
   ) +
-  facet_grid(y_var ~ x_var)
+  facet_grid(y_var ~ x_var) +
+  guides(
+    color = guide_legend(direction = "vertical")
+  ) +
+  theme(legend.position = "bottom")
 ```
 
 ### Hours <-> WB
 
-Draw a forest plot of meta-analyses with hours
+Draw a forest plot of meta-analyses with hours. First, define informative labels and correct order for them, and load a function for drawing forest plots.
 
-```{r}
+```{r forest-plot-labels}
 # Table of nice labels in proper order
 Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
   ungroup() %>%
@@ -743,9 +808,16 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
   ) %>%
   arrange(Parameter_order, y_var) %>%
   mutate(Panel_label = fct_inorder(Panel_label))
+
+# Functions in R/
+source(here("R", "meta-analysis-helpers.R"))
 ```
 
-```{r forest-hours-wb, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-hours-wb}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."
+
 fit_ma_sum <- summarize_ma(fit_ma)
 fp_1 <- forest_plot(
   object = fit_ma_sum,
@@ -766,7 +838,11 @@ fp_2 <- forest_plot(
 (fp_1 + theme(axis.title.x = element_blank())) / fp_2
 ```
 
-```{r forest-hours-wb-lavaan, fig.width = 8, fig.height = 5, fig.cap = "Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs."}
+```{r forest-hours-wb-lavaan}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs."
+
 # Also see in comparison to lavaan model estimates
 forest_plot(
   object = fit_ma_sum,
@@ -779,7 +855,11 @@ forest_plot(
 
 ### Experiences <-> WB
 
-```{r forest-motivations-wb-1, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (motivations to well-being). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-motivations-wb-1}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (motivations to well-being). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."
+
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",
@@ -818,13 +898,21 @@ fp_4 <- forest_plot(
 fp_1 / fp_3
 ```
 
-```{r forest-motivations-wb-2, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (well-being to motivations). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-motivations-wb-2}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (well-being to motivations). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."
+
 fp_2 / fp_4
 ```
 
 ### Autocorrelations
 
-```{r forest-autocorrelations, fig.width = 8, fig.height = 4, fig.cap = "Forest plots of meta-analytic raw lagged regression coefficients from models examining average hours played and well-being, showing only the well-being autocorrelations. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-autocorrelations}
+#| fig.height: 4
+#| fig.cap: >
+#|  "Forest plots of meta-analytic raw lagged regression coefficients from models examining average hours played and well-being, showing only the well-being autocorrelations. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."
+
 forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",
@@ -843,7 +931,7 @@ forest_plot(
 
 The model parameters report effects of one-unit (e.g. one hour per day) changes in the predictor on the outcome. We also expand on this by first asking what is the effect of an average deviation in a predictor on the outcome. That is, for example, we calculate the average range of players' average daily hours played, and then answer what the effect of an average player moving from their smallest to greatest amount of play would be on well-being.
 
-```{r}
+```{r average-range-effects}
 # Average ranges of predictors
 avg_ranges <- d %>%
   # Calculate range for everyone (returns -Inf if all values missing)
@@ -890,7 +978,7 @@ We then turn to a second question, how much would the average player need to inc
 
 We calculate, for each predictor and outcome, how much the predictor would need to change in order to elicit a change in the outcome greater than the subjective threshold. e.g. How many more hours would one need to play to "feel it".
 
-```{r}
+```{r subjective-threshold-estimates}
 # Subjective threshold for each outcome
 subjective_thresholds <- tibble(
   y_var = c("Affect", "Life satisfaction"),
@@ -917,7 +1005,7 @@ fit_ma_sum$summary %>%
 
 How much of posterior density is within ROPE defined by A&L subjectively noticeable limits?
 
-```{r}
+```{r subjective-threshold-rope}
 # Table of percentages of effects' posterior distributions with ROPE (as defined by thresholds for being subjectively noticed)
 fit_ma %>%
   filter(
@@ -949,7 +1037,11 @@ Comparing subjective hours estimates to objective play behaviour is complicated 
 
 Histograms of hours played (behaviour: top, strong; estimated: bottom, light). Only person-waves with both variables present are included.
 
-```{r time-subjective-objective-histogram, fig.height = 7, fig.width = 8, fig.cap = "Bivariate histograms of average hours played per day by wave (columns) and game (rows). Histograms above zero, with strong colour, reflect behavioural telemetry log data. Histograms below zero, in light colour, indicate subjective estimates of play. Histogram heights are normalized counts. Small triangles indicate means."}
+```{r time-subjective-objective-histogram}
+#| fig.height: 7
+#| fig.cap: >
+#|  "Bivariate histograms of average hours played per day by wave (columns) and game (rows). Histograms above zero, with strong colour, reflect behavioural telemetry log data. Histograms below zero, in light colour, indicate subjective estimates of play. Histogram heights are normalized counts. Small triangles indicate means."
+
 tmp <- d %>%
   drop_na(Hours, hours_est) %>%
   group_by(Game, pid, Wave) %>%
@@ -1003,7 +1095,11 @@ d %>%
 
 A scatterplot of subjective on objective time. Only person-waves with both variables present are included.
 
-```{r time-subjective-objective-scatterplot, fig.height = 7, fig.width = 8, fig.cap = "Scatterplots of subjectively estimated average hours of daily play on objective behavioural hours played. Dashed line indicates identity, solid lines are simple regression lines. Small blue points are individual participants, and solid dark points are bivariate sample means."}
+```{r time-subjective-objective-scatterplot}
+#| fig.height: 7
+#| fig.cap: >
+#|  "Scatterplots of subjectively estimated average hours of daily play on objective behavioural hours played. Dashed line indicates identity, solid lines are simple regression lines. Small blue points are individual participants, and solid dark points are bivariate sample means."
+
 d %>%
   drop_na(Hours, hours_est) %>%
   filter(Hours < 3, hours_est < 3) %>%
@@ -1031,7 +1127,11 @@ d %>%
 
 Wave-person differences. Difference indicates estimate - behaviour, so positive numbers indicate overestimates.
 
-```{r time-subjective-objective-differences, fig.height = 6, fig.width = 6, fig.cap = "Density curves of differences between subjectively estimated and objectively loggeed average daily play time."}
+```{r time-subjective-objective-differences}
+#| fig.height: 7
+#| fig.cap: >
+#|  "Density curves of differences between subjectively estimated and objectively logged average daily play time."
+
 d %>%
   select(Game, pid, Wave, Hours, hours_est) %>%
   mutate(Difference = hours_est - Hours) %>%
@@ -1042,7 +1142,7 @@ d %>%
     "Estimation error (hours/day)",
     breaks = pretty_breaks()
   ) +
-  coord_cartesian(xlim = c(-1.5, 1.5)) +
+  coord_cartesian(xlim = c(-0.75, 0.75)) +
   geom_vline(xintercept = 0, lty = 2, size = .25) +
   stat_halfeye(point_interval = NULL) +
   stat_summaryh(fun.data = mean_cl_boot_h) +
@@ -1062,7 +1162,11 @@ d %>%
 
 ### Meta-analysis
 
-```{r forest-subjective-wb, fig.width = 8, fig.height = 5, fig.cap = "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."}
+```{r forest-subjective-wb}
+#| fig.height: 5
+#| fig.cap: >
+#|  "Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction."
+
 fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",
