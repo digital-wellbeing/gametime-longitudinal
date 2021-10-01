@@ -264,7 +264,7 @@ d %>%
   as_kable_extra(
     caption = "Summary of participants with and without responses."
   ) %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 
 # Take out all who didn't answer a single wave
 d <- filter(d, `Any waves with response` == "TRUE")
@@ -392,7 +392,7 @@ d_t %>%
   ) %>%
   add_overall() %>%
   as_kable_extra(caption = "Summaries of raw session durations") %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 
 # Then remove flagged sessions from data
 d_t <- d_t %>%
@@ -452,7 +452,7 @@ d_t %>%
   mutate(overlaps = int_overlaps(interval, lag(interval))) %>% 
   head() %>% 
   kbl() %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 ```
 
 We then replace the original intervals with the new ones (dropping many rows that are now redundant and set to NA), and then remove the now possibly invalid start and end times and durations (this corrected information is now contained in `interval`).
@@ -588,7 +588,7 @@ d_t %>%
   as_kable_extra(
     caption = "Average session numbers and hours played in the whole study"
   ) %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 ```
 
 ### Merge telemetry to survey data
@@ -632,7 +632,7 @@ d %>%
   as_kable_extra(
     caption = "Summary of participants with and without responses."
   ) %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 
 # Take out all who didn't answer a single wave
 d <- filter(d, `Any waves with play` == "TRUE")
@@ -653,7 +653,7 @@ d %>%
   as_kable_extra(
     caption = "Numbers (%) of person-waves with more than 16h/day of play"
   ) %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 
 d <- d %>%
   mutate(
@@ -675,7 +675,7 @@ d %>%
   as_kable_extra(
     caption = "Numbers (%) of person-waves with negative intervals"
   ) %>% 
-  kable_classic(font_size = 12)
+  kable_styling(full_width = FALSE, font_size = 12)
 d <- d %>%
   filter(interval > 0 | is.na(interval))
 ```
