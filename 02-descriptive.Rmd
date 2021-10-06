@@ -86,7 +86,7 @@ bind_rows(
   arrange(Game, wid) %>%
   group_by(Game) %>%
   mutate(
-    R_rate = percent(n / lag(n), .1),
+    R_rate = percent(n / lag(n), .01),
     n = comma(n)
   ) %>%
   pivot_wider(names_from = wid, values_from = c(n, R_rate)) %>%
@@ -108,7 +108,7 @@ Only for actual responses (not rows where survey date was filled to be able to j
 
 ```{r response-date-histograms}
 #| fig.height: 8
-#| fig.cap: "Histograms of response dates."
+#| fig.cap: Histograms of response dates.
 
 d %>%
   # Take only actually responded-to waves
@@ -135,7 +135,7 @@ Response times
 
 ```{r response-time-histograms}
 #| fig.height: 8
-#| fig.cap: "Histograms of response times (in UTC)."
+#| fig.cap: Histograms of response times (in UTC).
 
 d %>%
   filter(Responded) %>%

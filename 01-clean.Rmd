@@ -300,7 +300,7 @@ We then have a clean table of the relevant survey responses, ready to be joined 
 
 ## Telemetry
 
-We first load the game behaviour data sets, saved in game-specific compressed comma-separated value files. 
+We first load the game behaviour data sets, saved in game-specific compressed comma-separated value files. These files are minimally processed versions of ones received from publishers. (Players who didn't explicitly consent in the survey were excluded, variable names were harmonised, and tables were reshaped to the same format.)
 
 ```{r data-telemetry-load}
 # Animal Crossing
@@ -558,7 +558,7 @@ Then look at individual sessions' durations. Recall that Apex Legends sessions a
 ```{r session-duration-histograms}
 #| fig.height: 6
 #| fig.cap: >
-#|  "Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)."
+#|  Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions).
 
 d_t %>%
   ggplot(aes(Hours)) +
@@ -699,7 +699,6 @@ write_rds(d, file = here("Data", "cleaned_data.rds"), compress = "gz")
 
 Run some tests on the cleaned data.
 ```{r test-cleaning}
-#| cache: FALSE
 library(testthat)
 test_dir(here("R/tests/testthat"))
 ```
