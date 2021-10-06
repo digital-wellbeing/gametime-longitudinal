@@ -344,6 +344,15 @@ t_or <- read_csv(here("Data", "telemetry-outriders.csv.gz"))
 t_or <- t_or %>%
   select(pid, session_start, session_end) %>%
   mutate(Game = "Outriders")
+
+# The Crew 2
+# Session times are constructed from a signal sent in 5-minute intervals,
+#  therefore if the end timestamp is missing, the session was <5 minutes in duration, and therefore not used
+t_tc2 <- read_csv(here("Data", "telemetry-the-crew-2.csv.gz"))
+# Drop <5min sessions and name game
+t_tc2 <- t_tc2 %>% 
+  drop_na(session_end) %>% 
+  mutate(Game = "The Crew 2")
 ```
 
 Merge games tables to one table
@@ -351,7 +360,7 @@ Merge games tables to one table
 ```{r data-telemetry-merge}
 # Merge games' telemetry to one table
 d_t <- bind_rows(
-  t_acnh, t_al, t_fh, t_gts, t_or
+  t_acnh, t_al, t_fh, t_gts, t_or, t_tc2
 )
 ```
 
