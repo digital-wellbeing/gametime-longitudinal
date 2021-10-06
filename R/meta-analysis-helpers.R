@@ -13,7 +13,7 @@ summarize_ma <- function(object) {
     unnest(out) %>%
     rename(Average = Intercept) %>%
     pivot_longer(`AC:NH`:Average, names_to = "Game") %>%
-    mutate(Game = fct_relevel(Game, "Average")) %>%
+    mutate(Game = factor(Game, levels = c("Average", rev(unique(d$Game))))) %>%
     ungroup() %>%
     left_join(Order)
 
@@ -37,7 +37,7 @@ summarize_ma <- function(object) {
     mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]")) %>%
     # Ordered labels
     left_join(Order) %>%
-    mutate(Game = fct_relevel(Game, "Average"))
+    mutate(Game = factor(Game, levels = c("Average", rev(unique(d$Game)))))
 
   list(
     summary = fit_ma_sum,
