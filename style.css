@@ -1,0 +1,36 @@
+p.caption {
+  color: #777;
+  margin-top: 10px;
+}
+p code {
+  white-space: inherit;
+}
+pre {
+  word-break: normal;
+  word-wrap: normal;
+  border: 1px solid #eee !important;
+  font-size: 12px;
+}
+pre code {
+  white-space: inherit;
+}
+
+@media (min-width: 1200px) {
+  .container-fluid {
+    max-width: 110rem;
+  }
+  .container-fluid .row {
+    justify-content: space-evenly;
+  }
+  .container-fluid main {
+    max-width: 60rem;
+  }
+  .sidebar {
+    max-width: 15rem;
+  }
+
+  /* Increase font-size for very wide devices */
+  body {
+    font-size: 18px
+  }
+}

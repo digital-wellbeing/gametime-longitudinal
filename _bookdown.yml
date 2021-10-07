@@ -1,0 +1,10 @@
+book_filename: "gametime_longitudinal"
+output_dir: "docs"
+new_session: true
+before_chapter_script: _common.R
+delete_merged_file: true
+view: https://github.com/digital-wellbeing/gametime-longitudinal/blob/main/%s
+edit: https://github.com/digital-wellbeing/gametime-longitudinal/edit/main/%s
+language:
+  ui:
+    chapter_name: ""

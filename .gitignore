@@ -37,3 +37,18 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Vscode stuff
+.vscode/
+
+# Output
+Analysis_files/
+Output/descriptive_files/
+Output/*.html
+Output/Figures/*.png
+Output/brms/*.rds
+gametime_longitudinal.rds
+_bookdown_files/
+
+# Temporary files (cache for slow computations)
+Temp/
