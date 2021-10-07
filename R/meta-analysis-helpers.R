@@ -132,7 +132,7 @@ forest_plot <- function(object,
     theme(
       axis.title.y = element_blank(),
       axis.text.y = element_markdown(),
-      # panel.grid.major.y = element_blank()
+      panel.spacing.x = unit(10, "pt")
     ) +
     facet_wrap("Panel_label", scales = "free_x", labeller = label_parsed)
 

@@ -201,21 +201,19 @@ parameters_change_over_time %>%
   kable_styling(full_width = FALSE, font_size = 12)
 ```
 
-## Models
+## Simple correlation
 
-### Simple correlation
-
-Regression coefficients (standardized and raw) of well-being predicted from game play need satisfaction, and intrinsic motivation (enjoyment).
+Before more informative modelling, we estimate simple bivariate regressions between the key variables. 
 
 ```{r simple-regression-coefficients}
 #| fig.height: 7
 #| fig.cap: >
-#|  Bivariate regression coefficients of models predicting well-being. Columns indicate predictors, and the two rows are the different well-being outcome variables.
+#|  Unstandardised bivariate regression coefficients of models predicting well-being. Columns indicate predictors, and the two rows are the different well-being outcome variables.
 
 d %>%
   select(
     Game, pid, wid, Wave,
-    Hours, Intrinsic, Extrinsic,
+    Hours, hours_est, Intrinsic, Extrinsic,
     Affect, `Life satisfaction`
   ) %>%
   pivot_longer(
@@ -223,28 +221,21 @@ d %>%
     names_to = "Outcome", values_to = "Outcome_value"
   ) %>%
   pivot_longer(
-    c(Hours, Intrinsic, Extrinsic),
+    c(Hours, hours_est, Intrinsic, Extrinsic),
     names_to = "Predictor", values_to = "Predictor_value"
   ) %>%
   group_by(Game, Outcome, Predictor, Wave) %>%
   summarise(
-    std = list(tidy(lm(scale(Outcome_value) ~ scale(Predictor_value), data = cur_data()), conf.int = TRUE)),
-    raw = list(tidy(lm(Outcome_value ~ Predictor_value, data = cur_data()), conf.int = TRUE)),
+    tidy(
+      lm(
+        Outcome_value ~ Predictor_value, 
+        data = cur_data()
+      ), 
+      conf.int = TRUE
+    ),
   ) %>%
-  pivot_longer(std:raw, names_to = "Model") %>%
-  unnest(value) %>%
   filter(term != "(Intercept)") %>%
-  mutate(Panel = str_glue("{Outcome} ({Model})")) %>%
-  mutate(
-    Panel = factor(
-      Panel,
-      levels = c(
-        "Affect (raw)", "Life satisfaction (raw)",
-        "Affect (std)", "Life satisfaction (std)"
-      )
-    )
-  ) %>%
-  ggplot(aes(estimate, Game, col = Wave, shape = Model)) +
+  ggplot(aes(estimate, Game, col = Wave)) +
   geom_vline(xintercept = 0, lty = 2, size = .25) +
   scale_x_continuous(
     "Bivariate regression coefficient (95%CI)",
@@ -255,15 +246,11 @@ d %>%
     size = .4,
     position = position_dodge2v(.35)
   ) +
-  facet_grid(Outcome ~ Predictor, scales = "free_x") +
+  facet_grid(Outcome ~ Predictor) +
   theme(
-    legend.position = "bottom"
-  ) +
-  guides(
-    shape = guide_legend(direction = "vertical"),
-    color = guide_legend(direction = "vertical")
-  ) +
-  theme(legend.position = "bottom")
+    legend.position = "bottom",
+    axis.title.y = element_blank()
+  )
 ```
 
 ## RICLPM
@@ -360,7 +347,7 @@ p_tmp_0 <- last_plot() %+%
   filter(d_riclpm_plots, x_var == "hours_est") +
   scale_x_continuous(
     "Estimated hours played per day at previous wave",
-    breaks = pretty_breaks()
+    breaks = 0:3
   )
 p_tmp_0
 ```
@@ -525,14 +512,11 @@ pars_riclpm_sep <- fit_riclpm_sep %>%
   select(-fit)
 ```
 
-Look at estimates
+### Table of RICLPM parameters
 
-```{r riclpm-regression-estimates}
-#| fig.height: 7
-#| fig.cap: >
-#|  RICLPM regression coefficient estimates (lagged and cross-lagged paths, parameter indicated by row) for four predictors (columns). Colors indicate different models; independent fits to games, or a single model fitted to all games' pooled data.
+This table displays the lavaan estimates (game specific and pooled).
 
-# Table of RICLPM parameters from all models
+```{r}
 pars_riclpm <- pars_riclpm_sep %>%
   mutate(Model = "Independent") %>%
   bind_rows(pars_riclpm_avg %>% mutate(Model = "Pooled", Game = "Average")) %>%
@@ -546,72 +530,23 @@ pars_riclpm <- pars_riclpm_sep %>%
   ) %>%
   mutate(Game = fct_relevel(Game, "Average")) %>%
   select(-c(lhs:label, z))
-
-# Plot of regression parameters (autocorrelations and crosslags; raw)
-pars_riclpm %>%
-  rename(Predictor = x_var, Outcome = y_var) %>%
-  filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>%
-  ggplot(
-    aes(
-      est, Game, shape = Outcome,
-      col = Model, xmin = ci.lower, xmax = ci.upper
-    )
-  ) +
-  scale_x_continuous(
-    "Estimated parameter",
-    breaks = pretty_breaks()
-  ) +
-  geom_vline(xintercept = 0, size = .2, lty = 2) +
-  geom_pointrangeh(position = position_dodge2v(.6), size = .4) +
-  facet_grid(Parameter ~ Predictor, scales = "free_x") +
-  guides(
-    shape = guide_legend(direction = "vertical"),
-    color = guide_legend(direction = "vertical")
-  ) +
-  theme(legend.position = "bottom")
-```
-
-Plots of covariance parameters (raw)
-
-```{r riclpm-covariance-estimates}
-#| fig.height: 7
-#| fig.cap: >
-#|  RICLPM raw covariance parameter estimates, legend as above.
-
-pars_riclpm %>%
-  rename(Predictor = x_var, Outcome = y_var) %>%
-  filter(
-    Type == "Unstandardized",
-    str_detect(Parameter, " ~~ ")
-  ) %>%
-  ggplot(
-    aes(
-      x = est,
-      y = Game,
-      shape = Outcome,
-      col = Model,
-      xmin = ci.lower,
-      xmax = ci.upper
-    )
-  ) +
-  scale_x_continuous(
-    "Estimated parameter",
-    breaks = pretty_breaks()
-  ) +
-  geom_vline(xintercept = 0, size = .2, lty = 2) +
-  geom_pointrangeh(
-    position = position_dodge2v(.5),
-    size = .4
-  ) +
-  facet_grid(
-    Parameter ~ Predictor,
-    scales = "free_x"
-  ) +
-  guides(
-    shape = guide_legend(direction = "vertical"),
-    color = guide_legend(direction = "vertical")
-  ) +
-  theme(legend.position = "bottom")
+# Interactive table so reader can find what they're looking for
+pars_riclpm %>% 
+  select(
+    x_var, y_var, Game, Parameter, Type, Model,
+    est, ci.lower, ci.upper, pvalue
+  ) %>% 
+  mutate(
+    pvalue = pvalue(pvalue),
+    across(x_var:Game, factor),
+    across(where(is.numeric), ~round(.x, 4))
+  ) %>% 
+  datatable(
+    filter = "top",
+    class = "display"
+  ) %>% 
+  formatRound(c("est", "ci.lower", "ci.upper"), 2) %>% 
+  formatStyle(TRUE, `font-size` = '12px')
 ```
 
 ## Meta-analyses
@@ -833,7 +768,7 @@ fp_2 <- forest_plot(
   x_var = "Hours",
   parameters = c("wx2 ~ wy1"),
   lavaan = FALSE,
-  x_limits = c(-.05, .075)
+  x_limits = c(-.05, .06)
 )
 (fp_1 + theme(axis.title.x = element_blank())) / fp_2
 ```
@@ -844,13 +779,23 @@ fp_2 <- forest_plot(
 #|  Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs.
 
 # Also see in comparison to lavaan model estimates
-forest_plot(
+fp_1 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",
   x_var = "Hours",
-  parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-  lavaan = TRUE
+  parameters = c("wy2 ~ wx1"),
+  lavaan = TRUE,
+  x_limits = c(-.3, .4)
 )
+fp_2 <- forest_plot(
+  object = fit_ma_sum,
+  type = "Unstandardized",
+  x_var = "Hours",
+  parameters = c("wx2 ~ wy1"),
+  lavaan = TRUE,
+  x_limits = c(-.05, .06)
+)
+(fp_1 + theme(axis.title.x = element_blank())) / fp_2
 ```
 
 ### Experiences <-> WB
@@ -875,7 +820,7 @@ fp_2 <- forest_plot(
   x_var = "Intrinsic",
   parameters = c("wx2 ~ wy1"),
   lavaan = FALSE,
-  x_limits = c(-.1, .3)
+  x_limits = c(-.15, .35)
 ) +
   theme(axis.title.x = element_blank())
 fp_3 <- forest_plot(
@@ -884,7 +829,7 @@ fp_3 <- forest_plot(
   x_var = "Extrinsic",
   parameters = c("wy2 ~ wx1"),
   lavaan = FALSE,
-  x_limits = c(-.4, .3)
+  x_limits = c(-.5, .4)
 ) +
   theme(axis.title.x = element_blank())
 fp_4 <- forest_plot(
@@ -893,7 +838,7 @@ fp_4 <- forest_plot(
   x_var = "Extrinsic",
   parameters = c("wx2 ~ wy1"),
   lavaan = FALSE,
-  x_limits = c(-.4, .3)
+  x_limits = c(-.35, .35)
 )
 fp_1 / fp_3
 ```
@@ -919,7 +864,7 @@ forest_plot(
   x_var = "Hours",
   parameters = c("wy2 ~ wy1"),
   lavaan = TRUE,
-  x_limits = c(-.2, .6)
+  x_limits = c(-.1, .8)
 ) +
   scale_x_continuous(
     "Estimated lagged effect",
@@ -1142,7 +1087,7 @@ d %>%
     "Estimation error (hours/day)",
     breaks = pretty_breaks()
   ) +
-  coord_cartesian(xlim = c(-0.75, 0.75)) +
+  coord_cartesian(xlim = c(-0.5, 0.5)) +
   geom_vline(xintercept = 0, lty = 2, size = .25) +
   stat_halfeye(point_interval = NULL) +
   stat_summaryh(fun.data = mean_cl_boot_h) +
@@ -1173,7 +1118,7 @@ fp_1 <- forest_plot(
   x_var = "hours_est",
   parameters = c("wy2 ~ wx1"),
   lavaan = TRUE,
-  x_limits = c(-.3, .5)
+  x_limits = c(-.35, .55)
 )
 fp_2 <- forest_plot(
   object = fit_ma_sum,
@@ -1181,7 +1126,7 @@ fp_2 <- forest_plot(
   x_var = "hours_est",
   parameters = c("wx2 ~ wy1"),
   lavaan = TRUE,
-  x_limits = c(-.1, .1)
+  x_limits = c(-.15, .2)
 )
 fp_1 / fp_2
 ```
