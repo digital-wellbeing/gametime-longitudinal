@@ -26,7 +26,6 @@ To ensure the reproducibility of our analyses, you can use Docker:
 Build the Docker image
 ```
 docker build \
-    --no-cache \
     --build-arg R_VERSION=4.1.1 \
     --build-arg RENV_VERSION=0.14.0 \
     -t gametime-longitudinal .
@@ -38,6 +37,7 @@ docker run \
     --rm \
     -v "$(pwd):/home/" \
     -v "/home/renv/library" \
+    -e MAX_CORES=1 \
     gametime-longitudinal \
     R -e 'renv::restore(prompt = FALSE); bookdown::render_book()'
 ```
