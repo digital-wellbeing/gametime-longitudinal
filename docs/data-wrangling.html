@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>2 Data wrangling | Game play and well-being | Online analysis supplement</title>
+<meta name="author" content="Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski">
+<meta name="description" content="Before visualising and modelling, we clean the raw survey and behavioural (telemetry) data. Here, we also “define” participants by excluding from the raw data any individuals who didn’t respond to...">
+<meta name="generator" content="bookdown 0.24 with bs4_book()">
+<meta property="og:title" content="2 Data wrangling | Game play and well-being | Online analysis supplement">
+<meta property="og:type" content="book">
+<meta property="og:url" content="https://digital-wellbeing.github.io/gametime-longitudinal/data-wrangling.html">
+<meta property="og:image" content="https://digital-wellbeing.github.io/gametime-longitudinal/Figures/cover.png">
+<meta property="og:description" content="Before visualising and modelling, we clean the raw survey and behavioural (telemetry) data. Here, we also “define” participants by excluding from the raw data any individuals who didn’t respond to...">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="2 Data wrangling | Game play and well-being | Online analysis supplement">
+<meta name="twitter:description" content="Before visualising and modelling, we clean the raw survey and behavioural (telemetry) data. Here, we also “define” participants by excluding from the raw data any individuals who didn’t respond to...">
+<meta name="twitter:image" content="https://digital-wellbeing.github.io/gametime-longitudinal/Figures/cover.png">
+<!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/header-attrs-2.11/header-attrs.js"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
+<script src="libs/bootstrap-4.6.0/bootstrap.bundle.min.js"></script><link href="libs/_Titillium%20Web-0.4.0/font.css" rel="stylesheet">
+<link href="libs/_Fira%20Code-0.4.0/font.css" rel="stylesheet">
+<script src="libs/bs3compat-0.3.1/transition.js"></script><script src="libs/bs3compat-0.3.1/tabs.js"></script><script src="libs/bs3compat-0.3.1/bs3compat.js"></script><link href="libs/bs4_book-1.0.0/bs4_book.css" rel="stylesheet">
+<script src="libs/bs4_book-1.0.0/bs4_book.js"></script><script src="libs/kePrint-0.0.1/kePrint.js"></script><link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+<script src="libs/htmlwidgets-1.5.4/htmlwidgets.js"></script><link href="libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet">
+<script src="libs/datatables-binding-0.19/datatables.js"></script><link href="libs/dt-core-1.10.20/css/jquery.dataTables.min.css" rel="stylesheet">
+<link href="libs/dt-core-1.10.20/css/jquery.dataTables.extra.css" rel="stylesheet">
+<script src="libs/dt-core-1.10.20/js/jquery.dataTables.min.js"></script><link href="libs/nouislider-7.0.10/jquery.nouislider.min.css" rel="stylesheet">
+<script src="libs/nouislider-7.0.10/jquery.nouislider.min.js"></script><link href="libs/selectize-0.12.0/selectize.bootstrap3.css" rel="stylesheet">
+<script src="libs/selectize-0.12.0/selectize.min.js"></script><link href="libs/crosstalk-1.1.1/css/crosstalk.css" rel="stylesheet">
+<script src="libs/crosstalk-1.1.1/js/crosstalk.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- CSS --><link rel="stylesheet" href="bs4_style.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body data-spy="scroll" data-target="#toc">
+
+<div class="container-fluid">
+<div class="row">
+  <header class="col-sm-12 col-lg-3 sidebar sidebar-book"><a class="sr-only sr-only-focusable" href="#content">Skip to main content</a>
+
+    <div class="d-flex align-items-start justify-content-between">
+      <h1>
+        <a href="index.html" title="">Game play and well-being | Online analysis supplement</a>
+      </h1>
+      <button class="btn btn-outline-primary d-lg-none ml-2 mt-1" type="button" data-toggle="collapse" data-target="#main-nav" aria-expanded="true" aria-controls="main-nav"><i class="fas fa-bars"></i><span class="sr-only">Show table of contents</span></button>
+    </div>
+
+    <div id="main-nav" class="collapse-lg">
+      <form role="search">
+        <input id="search" class="form-control" type="search" placeholder="Search" aria-label="Search">
+</form>
+
+      <nav aria-label="Table of contents"><h2>Table of contents</h2>
+        <ul class="book-toc list-unstyled">
+<li><a class="" href="index.html"><span class="header-section-number">1</span> Introduction</a></li>
+<li><a class="active" href="data-wrangling.html"><span class="header-section-number">2</span> Data wrangling</a></li>
+<li><a class="" href="descriptives.html"><span class="header-section-number">3</span> Descriptives</a></li>
+<li><a class="" href="main-analysis.html"><span class="header-section-number">4</span> Main analysis</a></li>
+</ul>
+
+        <div class="book-extra">
+          <p><a id="book-repo" href="https://github.com/digital-wellbeing/gametime-longitudinal">View book source <i class="fab fa-github"></i></a></p>
+        </div>
+      </nav>
+</div>
+  </header><main class="col-sm-12 col-md-9 col-lg-7" id="content"><div id="data-wrangling" class="section level1" number="2">
+<h1>
+<span class="header-section-number">2</span> Data wrangling<a class="anchor" aria-label="anchor" href="#data-wrangling"><i class="fas fa-link"></i></a>
+</h1>
+<p>Before visualising and modelling, we clean the raw survey and behavioural (telemetry) data. Here, we also “define” participants by excluding from the raw data any individuals who didn’t respond to a single survey item, or who didn’t have any play data in the six week duration. Lack of play data indicates that they are not “active players”, the target population of our study.</p>
+<p>We first load the required R packages.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://yihui.org/knitr/">knitr</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://haozhu233.github.io/kableExtra/">kableExtra</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/sfirke/janitor">janitor</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://here.r-lib.org/">here</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org">scales</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://lubridate.tidyverse.org">lubridate</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ddsjoberg/gtsummary">gtsummary</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/tidyverse/multidplyr">multidplyr</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/yixuan/showtext">showtext</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/r-lib/sessioninfo#readme">sessioninfo</a></span><span class="op">)</span></code></pre></div>
+<p>And then set options for plots and parallel computations.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Plotting options</span>
+<span class="va">Font</span> <span class="op">&lt;-</span> <span class="st">"Titillium Web"</span>
+<span class="fu">font_add_google</span><span class="op">(</span><span class="va">Font</span>, <span class="va">Font</span><span class="op">)</span>
+<span class="fu">theme_set</span><span class="op">(</span>
+  <span class="fu">theme_linedraw</span><span class="op">(</span>
+    base_family <span class="op">=</span> <span class="va">Font</span>,
+    base_size <span class="op">=</span> <span class="fl">12</span>
+  <span class="op">)</span> <span class="op">+</span>
+    <span class="fu">theme</span><span class="op">(</span>
+      panel.grid.minor <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span>,
+      panel.grid.major.x <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span>
+    <span class="op">)</span>
+<span class="op">)</span>
+
+<span class="co"># parallel computations</span>
+<span class="va">MAX_CORES</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html">Sys.getenv</a></span><span class="op">(</span><span class="st">"MAX_CORES"</span><span class="op">)</span><span class="op">)</span>
+<span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">MAX_CORES</span><span class="op">)</span><span class="op">)</span> <span class="va">MAX_CORES</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html">detectCores</a></span><span class="op">(</span>logical <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>
+<span class="va">cluster</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/new_cluster.html">new_cluster</a></span><span class="op">(</span><span class="va">MAX_CORES</span><span class="op">)</span>
+<span class="co"># load packages on clusters</span>
+<span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/cluster_utils.html">cluster_library</a></span><span class="op">(</span><span class="va">cluster</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"dplyr"</span>, <span class="st">"lubridate"</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># For saving intermediate files</span>
+<span class="fu"><a href="https://rdrr.io/r/base/files2.html">dir.create</a></span><span class="op">(</span><span class="st">"Temp"</span>, <span class="cn">FALSE</span><span class="op">)</span></code></pre></div>
+<div id="survey" class="section level2" number="2.1">
+<h2>
+<span class="header-section-number">2.1</span> Survey<a class="anchor" aria-label="anchor" href="#survey"><i class="fas fa-link"></i></a>
+</h2>
+<p>The table in <code>Data/qualtrics.csv.gz</code> contains the raw survey data, except that we have excluded respondents who didn’t consent and who withdrew from the study. We proceed now to clean that file.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># read_csv() automatically decompresses the .gz archive</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"qualtrics.csv.gz"</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># Clean responses to the question asking if they played in past 2 weeks</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>played <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="op">!</span><span class="fu">str_detect</span><span class="op">(</span><span class="va">played</span>, <span class="st">"NOT"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># Create estimated time played variable from reported hours &amp; mins</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>minutes <span class="op">=</span> <span class="va">minutes</span> <span class="op">/</span> <span class="fl">60</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    hours_est <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowSums</a></span><span class="op">(</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="va">hours</span>, <span class="va">minutes</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># sum above returns 0 if both hours and minutes are NA, fix here:</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    hours_est <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">hours</span><span class="op">)</span> <span class="op">&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">minutes</span><span class="op">)</span>, <span class="cn">NaN</span>, <span class="va">hours_est</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">minutes</span>, <span class="op">-</span><span class="va">hours</span><span class="op">)</span>
+
+<span class="co"># Ensure correct ordering and variable type of item responses</span>
+<span class="va">spane_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+  <span class="st">"Very rarely or never"</span>,
+  <span class="st">"Rarely"</span>,
+  <span class="st">"Occasionally"</span>,
+  <span class="st">"Sometimes"</span>,
+  <span class="st">"Frequently"</span>,
+  <span class="st">"Often"</span>,
+  <span class="st">"Very often or always"</span>
+<span class="op">)</span>
+<span class="va">pens_levels</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+  <span class="st">"Strongly disagree"</span>,
+  <span class="st">"Disagree"</span>,
+  <span class="st">"Somewhat disagree"</span>,
+  <span class="st">"Neither agree nor disagree"</span>,
+  <span class="st">"Somewhat agree"</span>,
+  <span class="st">"Agree"</span>,
+  <span class="st">"Strongly agree"</span>
+<span class="op">)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    <span class="fu">across</span><span class="op">(</span>
+      <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"spane_"</span><span class="op">)</span>,
+      <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span>
+          <span class="va">x</span>,
+          levels <span class="op">=</span> <span class="va">spane_levels</span>
+        <span class="op">)</span>
+      <span class="op">}</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    <span class="fu">across</span><span class="op">(</span>
+      <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"pens_"</span><span class="op">)</span>,
+      <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
+        <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span>
+          <span class="va">x</span>,
+          levels <span class="op">=</span> <span class="va">pens_levels</span>
+        <span class="op">)</span>
+      <span class="op">}</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Convert item responses to numbers</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    <span class="fu">across</span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"spane_"</span><span class="op">)</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"pens_"</span><span class="op">)</span><span class="op">)</span>,
+      <span class="va">as.numeric</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Reverse reverse-scored items</span>
+<span class="va">reverse_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+  <span class="st">"pens_needs_9"</span>,
+  <span class="st">"pens_motivations_2"</span>,
+  <span class="st">"pens_motivations_3"</span>
+<span class="op">)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    <span class="fu">across</span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">reverse_items</span><span class="op">)</span>, <span class="op">~</span> <span class="fl">8</span> <span class="op">-</span> <span class="va">.x</span><span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Subscale items</span>
+<span class="va">spane_pos_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"spane_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">5</span>, <span class="fl">7</span>, <span class="fl">10</span>, <span class="fl">12</span><span class="op">)</span><span class="op">)</span>
+<span class="va">spane_neg_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"spane_"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">6</span>, <span class="fl">8</span>, <span class="fl">9</span>, <span class="fl">11</span><span class="op">)</span><span class="op">)</span>
+<span class="va">autonomy_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"pens_needs_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span>
+<span class="va">competence_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"pens_needs_"</span>, <span class="fl">4</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span>
+<span class="va">relatedness_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"pens_needs_"</span>, <span class="fl">7</span><span class="op">:</span><span class="fl">9</span><span class="op">)</span>
+<span class="va">intrinsic_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"pens_motivations_"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">4</span><span class="op">)</span>
+<span class="va">extrinsic_items</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"pens_motivations_"</span>, <span class="fl">5</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span>
+
+<span class="co"># Create (sub)scale scores (means of item responses)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    spane_pos <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">spane_pos_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    spane_neg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">spane_neg_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    spane <span class="op">=</span> <span class="va">spane_pos</span> <span class="op">-</span> <span class="va">spane_neg</span>,
+    intrinsic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">intrinsic_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    extrinsic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">extrinsic_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    autonomy <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">autonomy_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    competence <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">competence_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    relatedness <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html">rowMeans</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">.</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span><span class="va">relatedness_items</span><span class="op">)</span><span class="op">)</span>,
+      na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+  <span class="op">)</span>
+
+<span class="co"># Then remove and rename variables</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span>
+    <span class="op">-</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html">all_of</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span>
+        <span class="va">spane_pos_items</span>,
+        <span class="va">spane_neg_items</span>,
+        <span class="va">autonomy_items</span>,
+        <span class="va">competence_items</span>,
+        <span class="va">relatedness_items</span>,
+        <span class="va">intrinsic_items</span>,
+        <span class="va">extrinsic_items</span>
+      <span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Abbreviate long game names</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    game <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html">ifelse</a></span><span class="op">(</span><span class="va">game</span> <span class="op">==</span> <span class="st">"Animal Crossing: New Horizons"</span>, <span class="st">"AC:NH"</span>, <span class="va">game</span><span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Gender as factor</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>gender <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">gender</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># Prettier names for tables/figures</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">rename</span><span class="op">(</span>
+    Affect <span class="op">=</span> <span class="va">spane</span>,
+    `Life satisfaction` <span class="op">=</span> <span class="va">csas</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">rename_with</span><span class="op">(</span>
+    <span class="va">str_to_title</span>,
+    <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">played</span><span class="op">:</span><span class="va">experience</span>, <span class="va">game</span>, <span class="va">company</span>, <span class="va">intrinsic</span><span class="op">:</span><span class="va">relatedness</span><span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Make table easier to look at by including only variables we need</span>
+<span class="co"># in a reasonable order</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span>
+    <span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span>,
+    <span class="va">Affect</span>, <span class="va">`Life satisfaction`</span>,
+    <span class="va">Intrinsic</span>, <span class="va">Extrinsic</span>, <span class="va">hours_est</span>,
+    <span class="va">StartDate</span>, <span class="va">Age</span>, <span class="va">Gender</span>, <span class="va">Experience</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">arrange</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span><span class="op">)</span></code></pre></div>
+<div id="exclude-non-responders" class="section level3" number="2.1.1">
+<h3>
+<span class="header-section-number">2.1.1</span> Exclude non-responders<a class="anchor" aria-label="anchor" href="#exclude-non-responders"><i class="fas fa-link"></i></a>
+</h3>
+<p>At this point we remove all who did not respond to any items at any wave. For example there were “participants” who had simply clicked the consent buttons and then exited the survey. This defines a participant in combination with telemetry, below. (It is best to run this up here to speed up some computations below.)</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Person-wave level indicator if person answered any survey questions at wave</span>
+<span class="va">d</span><span class="op">$</span><span class="va">Responded</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/apply.html">apply</a></span><span class="op">(</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">d</span>, <span class="va">Affect</span>, <span class="va">`Life satisfaction`</span>, <span class="va">Intrinsic</span>, <span class="va">Extrinsic</span><span class="op">)</span>, <span class="fl">1</span>,
+  <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0</span>
+<span class="op">)</span>
+
+<span class="co"># Person-level indicator of how many waves responded to</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    `# of waves with response` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">Responded</span><span class="op">)</span>,
+    `Any waves with response` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">`# of waves with response`</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span>
+
+<span class="co"># Table of waves answered to by game</span>
+<span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">distinct</span><span class="op">(</span>
+    <span class="va">Game</span>, <span class="va">pid</span>,
+    <span class="va">`# of waves with response`</span>,
+    <span class="va">`Any waves with response`</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>
+    caption <span class="op">=</span> <span class="st">"Summary of participants with and without responses."</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:exclude-non-responders">Table 2.1: </span>Summary of participants with and without responses.
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 108,880
+</th>
+<th style="text-align:left;">
+AC:NH, N = 15,137
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 1,609
+</th>
+<th style="text-align:left;">
+EVE Online, N = 984
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 3,519
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 81,331
+</th>
+<th style="text-align:left;">
+Outriders, N = 2,051
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 4,249
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+# of waves with response
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+0
+</td>
+<td style="text-align:left;">
+16,750 (15%)
+</td>
+<td style="text-align:left;">
+777 (5.1%)
+</td>
+<td style="text-align:left;">
+238 (15%)
+</td>
+<td style="text-align:left;">
+70 (7.1%)
+</td>
+<td style="text-align:left;">
+350 (9.9%)
+</td>
+<td style="text-align:left;">
+14,338 (18%)
+</td>
+<td style="text-align:left;">
+142 (6.9%)
+</td>
+<td style="text-align:left;">
+835 (20%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+1
+</td>
+<td style="text-align:left;">
+61,400 (56%)
+</td>
+<td style="text-align:left;">
+7,990 (53%)
+</td>
+<td style="text-align:left;">
+923 (57%)
+</td>
+<td style="text-align:left;">
+590 (60%)
+</td>
+<td style="text-align:left;">
+1,959 (56%)
+</td>
+<td style="text-align:left;">
+45,997 (57%)
+</td>
+<td style="text-align:left;">
+1,285 (63%)
+</td>
+<td style="text-align:left;">
+2,656 (63%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+2
+</td>
+<td style="text-align:left;">
+17,654 (16%)
+</td>
+<td style="text-align:left;">
+3,432 (23%)
+</td>
+<td style="text-align:left;">
+289 (18%)
+</td>
+<td style="text-align:left;">
+190 (19%)
+</td>
+<td style="text-align:left;">
+577 (16%)
+</td>
+<td style="text-align:left;">
+12,296 (15%)
+</td>
+<td style="text-align:left;">
+378 (18%)
+</td>
+<td style="text-align:left;">
+492 (12%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+3
+</td>
+<td style="text-align:left;">
+13,076 (12%)
+</td>
+<td style="text-align:left;">
+2,938 (19%)
+</td>
+<td style="text-align:left;">
+159 (9.9%)
+</td>
+<td style="text-align:left;">
+134 (14%)
+</td>
+<td style="text-align:left;">
+633 (18%)
+</td>
+<td style="text-align:left;">
+8,700 (11%)
+</td>
+<td style="text-align:left;">
+246 (12%)
+</td>
+<td style="text-align:left;">
+266 (6.3%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Any waves with response
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+TRUE
+</td>
+<td style="text-align:left;">
+92,130 (85%)
+</td>
+<td style="text-align:left;">
+14,360 (95%)
+</td>
+<td style="text-align:left;">
+1,371 (85%)
+</td>
+<td style="text-align:left;">
+914 (93%)
+</td>
+<td style="text-align:left;">
+3,169 (90%)
+</td>
+<td style="text-align:left;">
+66,993 (82%)
+</td>
+<td style="text-align:left;">
+1,909 (93%)
+</td>
+<td style="text-align:left;">
+3,414 (80%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+FALSE
+</td>
+<td style="text-align:left;">
+16,750 (15%)
+</td>
+<td style="text-align:left;">
+777 (5.1%)
+</td>
+<td style="text-align:left;">
+238 (15%)
+</td>
+<td style="text-align:left;">
+70 (7.1%)
+</td>
+<td style="text-align:left;">
+350 (9.9%)
+</td>
+<td style="text-align:left;">
+14,338 (18%)
+</td>
+<td style="text-align:left;">
+142 (6.9%)
+</td>
+<td style="text-align:left;">
+835 (20%)
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> n (%)
+</td>
+</tr></tfoot>
+</table></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Take out all who didn't answer a single wave</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">d</span>, <span class="va">`Any waves with response`</span> <span class="op">==</span> <span class="st">"TRUE"</span><span class="op">)</span>
+
+<span class="co"># Remove the indicators</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">d</span>, <span class="op">-</span><span class="va">`# of waves with response`</span>, <span class="op">-</span><span class="va">`Any waves with response`</span><span class="op">)</span></code></pre></div>
+<p>Calculate the exact interval between survey waves for each person x wave</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">survey_intervals</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span>, <span class="va">StartDate</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">arrange</span><span class="op">(</span><span class="va">pid</span>, <span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># Make sure that there is a row for each subject X wave</span>
+  <span class="co"># so interval is calculated correctly</span>
+  <span class="fu">complete</span><span class="op">(</span><span class="va">wid</span>, <span class="fu">nesting</span><span class="op">(</span><span class="va">pid</span>, <span class="va">Game</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">arrange</span><span class="op">(</span><span class="va">pid</span>, <span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/partition.html">partition</a></span><span class="op">(</span><span class="va">cluster</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># Interval between waves in days</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    interval <span class="op">=</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">StartDate</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">StartDate</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span>
+      <span class="fl">3600</span> <span class="op">/</span> <span class="fl">24</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">collect</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">wid</span>, <span class="va">pid</span>, <span class="va">Game</span>, <span class="va">interval</span><span class="op">)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu">left_join</span><span class="op">(</span><span class="va">d</span>, <span class="va">survey_intervals</span><span class="op">)</span></code></pre></div>
+<p>We then have a clean table of the relevant survey responses, ready to be joined with the game play behaviour data (telemetry), below.</p>
+</div>
+</div>
+<div id="telemetry" class="section level2" number="2.2">
+<h2>
+<span class="header-section-number">2.2</span> Telemetry<a class="anchor" aria-label="anchor" href="#telemetry"><i class="fas fa-link"></i></a>
+</h2>
+<p>We first load the game behaviour data sets, saved in game-specific compressed comma-separated value files. These files are minimally processed versions of ones received from publishers. (Players who didn’t explicitly consent in the survey were excluded, variable names were harmonised, and tables were reshaped to the same format.)</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Animal Crossing</span>
+<span class="va">t_acnh</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-acnh.csv.gz"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="st">"AC:NH"</span><span class="op">)</span>
+
+<span class="co"># Apex Legends</span>
+<span class="va">t_al</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-apex-legends.csv.gz"</span><span class="op">)</span><span class="op">)</span>
+<span class="co"># Select relevant variables</span>
+<span class="va">t_al</span> <span class="op">&lt;-</span> <span class="va">t_al</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span>
+    <span class="va">pid</span>, <span class="va">session_start</span>, <span class="va">session_end</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># Format datetimes</span>
+  <span class="fu">transmute</span><span class="op">(</span>
+    <span class="va">pid</span>,
+    session_start <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as_date.html">as_datetime</a></span><span class="op">(</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/ymd_hms.html">mdy_hm</a></span><span class="op">(</span><span class="va">session_start</span><span class="op">)</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,
+    session_end <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as_date.html">as_datetime</a></span><span class="op">(</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/ymd_hms.html">mdy_hm</a></span><span class="op">(</span><span class="va">session_end</span><span class="op">)</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,
+    Game <span class="op">=</span> <span class="st">"Apex Legends"</span>
+  <span class="op">)</span>
+
+<span class="co"># Forza Horizon 4</span>
+<span class="va">t_fh</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-forza-horizon-4.csv.gz"</span><span class="op">)</span><span class="op">)</span>
+<span class="va">t_fh</span> <span class="op">&lt;-</span> <span class="va">t_fh</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    session_start <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/parse_date_time.html">parse_date_time</a></span><span class="op">(</span><span class="va">session_start</span>, <span class="st">"%m/%d/%Y %I:%M:%S %p"</span><span class="op">)</span>,
+    session_end <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/parse_date_time.html">parse_date_time</a></span><span class="op">(</span><span class="va">session_end</span>, <span class="st">"%m/%d/%Y %I:%M:%S %p"</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="st">"Forza Horizon 4"</span><span class="op">)</span>
+
+<span class="co"># Gran Turismo</span>
+<span class="va">t_gts</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-gran-turismo-sport.csv.gz"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    Game <span class="op">=</span> <span class="st">"Gran Turismo Sport"</span>,
+    pid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html">as.character</a></span><span class="op">(</span><span class="va">pid</span><span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Outriders</span>
+<span class="va">t_or</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-outriders.csv.gz"</span><span class="op">)</span><span class="op">)</span>
+<span class="co"># Select relevant variables</span>
+<span class="va">t_or</span> <span class="op">&lt;-</span> <span class="va">t_or</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">pid</span>, <span class="va">session_start</span>, <span class="va">session_end</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="st">"Outriders"</span><span class="op">)</span>
+
+<span class="co"># The Crew 2</span>
+<span class="co"># Session times are constructed from a signal sent in 5-minute intervals,</span>
+<span class="co">#  therefore if the end timestamp is missing, the session was &lt;5 minutes in duration, and therefore not used</span>
+<span class="va">t_tc2</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"telemetry-the-crew-2.csv.gz"</span><span class="op">)</span><span class="op">)</span>
+<span class="co"># Drop &lt;5min sessions and name game</span>
+<span class="va">t_tc2</span> <span class="op">&lt;-</span> <span class="va">t_tc2</span> <span class="op">%&gt;%</span> 
+  <span class="fu">drop_na</span><span class="op">(</span><span class="va">session_end</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="st">"The Crew 2"</span><span class="op">)</span></code></pre></div>
+<p>Merge games tables to one table</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Merge games' telemetry to one table</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="fu">bind_rows</span><span class="op">(</span>
+  <span class="va">t_acnh</span>, <span class="va">t_al</span>, <span class="va">t_fh</span>, <span class="va">t_gts</span>, <span class="va">t_or</span>, <span class="va">t_tc2</span>
+<span class="op">)</span></code></pre></div>
+<div id="a-note-on-apex-legends-sessions" class="section level3" number="2.2.1">
+<h3>
+<span class="header-section-number">2.2.1</span> A note on Apex Legends sessions<a class="anchor" aria-label="anchor" href="#a-note-on-apex-legends-sessions"><i class="fas fa-link"></i></a>
+</h3>
+<p>Apex Legends “sessions” are individual matches, and therefore actual gameplay sessions are longer in duration and consist of many matches. Therefore looking at individual session durations or counting the number of “sessions” for Apex Legends is misleading. If the individual sessions are of interest, you should first aggregate the matches to sessions by e.g. merging all matches that occur within say 5 minutes of each other.</p>
+</div>
+<div id="clean-sessions" class="section level3" number="2.2.2">
+<h3>
+<span class="header-section-number">2.2.2</span> Clean sessions<a class="anchor" aria-label="anchor" href="#clean-sessions"><i class="fas fa-link"></i></a>
+</h3>
+<p>Calculate hours played for each session</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    interval <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">interval</a></span><span class="op">(</span><span class="va">session_start</span>, <span class="va">session_end</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Hours <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/as.duration.html">as.duration</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fl">3600</span><span class="op">)</span></code></pre></div>
+<p>A table of the ranges of the raw session durations reveals some implausible values, which can happen e.g. when a device’s clock is improperly configured. We therefore remove bad sessions (ones that were outside the total measurement window, that had negative durations or durations greater than 10 hours.)</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Create indicators for implausible timestamps</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    `Session under 0h` <span class="op">=</span> <span class="va">Hours</span> <span class="op">&lt;</span> <span class="fl">0</span>,
+    `Session over 10h` <span class="op">=</span> <span class="va">Hours</span> <span class="op">&gt;</span> <span class="fl">10</span>,
+    `Session before` <span class="op">=</span> <span class="va">session_end</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">min</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">StartDate</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span>,
+    `Session after` <span class="op">=</span> <span class="va">session_start</span> <span class="op">&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html">max</a></span><span class="op">(</span><span class="va">d</span><span class="op">$</span><span class="va">StartDate</span><span class="op">)</span>
+  <span class="op">)</span>
+
+<span class="co"># Show a table of raw sessions and potential bad sessions</span>
+<span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">Hours</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"Session "</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>
+    by <span class="op">=</span> <span class="va">Game</span>,
+    statistic <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span><span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/select_helpers.html">all_continuous</a></span><span class="op">(</span><span class="op">)</span> <span class="op">~</span> <span class="st">"{median} ({min}, {max})"</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Summaries of raw session durations"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:clean-sessions">Table 2.2: </span>Summaries of raw session durations
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 1,604,414
+</th>
+<th style="text-align:left;">
+AC:NH, N = 640,766
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 383,200
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 47,905
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 363,735
+</th>
+<th style="text-align:left;">
+Outriders, N = 160,351
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 8,457
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Hours
+</td>
+<td style="text-align:left;">
+0.37 (-189,092.51, 346,154.65)
+</td>
+<td style="text-align:left;">
+0.55 (-189,092.51, 346,154.65)
+</td>
+<td style="text-align:left;">
+0.10 (-0.30, 1.47)
+</td>
+<td style="text-align:left;">
+0.42 (0.00, 23.92)
+</td>
+<td style="text-align:left;">
+0.66 (0.00, 24.00)
+</td>
+<td style="text-align:left;">
+0.94 (0.00, 719.22)
+</td>
+<td style="text-align:left;">
+0.92 (0.06, 167.97)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Session under 0h
+</td>
+<td style="text-align:left;">
+8,626 (0.5%)
+</td>
+<td style="text-align:left;">
+8,623 (1.3%)
+</td>
+<td style="text-align:left;">
+2 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+1 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Session over 10h
+</td>
+<td style="text-align:left;">
+30,573 (1.9%)
+</td>
+<td style="text-align:left;">
+20,921 (3.3%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+95 (0.2%)
+</td>
+<td style="text-align:left;">
+1,774 (0.5%)
+</td>
+<td style="text-align:left;">
+7,518 (4.7%)
+</td>
+<td style="text-align:left;">
+265 (3.1%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Session before
+</td>
+<td style="text-align:left;">
+107,417 (6.7%)
+</td>
+<td style="text-align:left;">
+694 (0.1%)
+</td>
+<td style="text-align:left;">
+5,879 (1.5%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+100,844 (63%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Session after
+</td>
+<td style="text-align:left;">
+1,017 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+1,017 (0.6%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> Median (Range); n (%)
+</td>
+</tr></tfoot>
+</table></div>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Then remove flagged sessions from data</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span>
+    <span class="fu">between</span><span class="op">(</span><span class="va">Hours</span>, <span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span>,
+    <span class="op">!</span><span class="va">`Session before`</span>,
+    <span class="op">!</span><span class="va">`Session after`</span>
+  <span class="op">)</span>
+
+<span class="co"># And now unnecessary variables</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"Session "</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<div id="overlapping-sessions" class="section level4" number="2.2.2.1">
+<h4>
+<span class="header-section-number">2.2.2.1</span> Overlapping sessions<a class="anchor" aria-label="anchor" href="#overlapping-sessions"><i class="fas fa-link"></i></a>
+</h4>
+<p>Deal with potentially overlapping sessions. A function to do this.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/source.html">source</a></span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"R/merge_intervals.R"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<p>Then merge all overlapping sessions for a given participant.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># explicitly cache</span>
+<span class="va">data_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Temp"</span>, <span class="st">"session-overlap-merged.rds"</span><span class="op">)</span>
+<span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html">file.exists</a></span><span class="op">(</span><span class="va">data_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/message.html">message</a></span><span class="op">(</span><span class="st">"Loading cached data"</span><span class="op">)</span>
+  <span class="va">d_t</span> <span class="op">&lt;-</span> <span class="fu">read_rds</span><span class="op">(</span>file <span class="op">=</span> <span class="va">data_path</span><span class="op">)</span>
+<span class="op">}</span> <span class="kw">else</span> <span class="op">{</span>
+  <span class="fu"><a href="https://rdrr.io/r/base/message.html">message</a></span><span class="op">(</span>
+    <span class="st">"Merging overlapping sessions (grab a coffee, this will take a while)"</span>
+  <span class="op">)</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/cluster_utils.html">cluster_copy</a></span><span class="op">(</span><span class="va">cluster</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"merge_interval"</span>, <span class="st">"merge_intervals_all"</span><span class="op">)</span><span class="op">)</span>
+  <span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+    <span class="fu">group_by</span><span class="op">(</span><span class="va">pid</span>, <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/partition.html">partition</a></span><span class="op">(</span><span class="va">cluster</span><span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+      interval <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">interval</a></span><span class="op">(</span><span class="va">session_start</span>, <span class="va">session_end</span><span class="op">)</span>
+    <span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu">arrange</span><span class="op">(</span><span class="va">session_start</span>, <span class="va">session_end</span>, .by_group <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>interval_merged <span class="op">=</span> <span class="fu">merge_intervals_all</span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu">collect</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+    <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span>
+  <span class="fu">write_rds</span><span class="op">(</span><span class="va">d_t</span>, file <span class="op">=</span> <span class="va">data_path</span><span class="op">)</span>
+<span class="op">}</span></code></pre></div>
+<p>Examples of overlapping sessions</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu">arrange</span><span class="op">(</span><span class="va">session_start</span>, <span class="va">session_end</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">pid</span> <span class="op">==</span> <span class="st">"de9b7f238ba168b0"</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>interval <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">interval</a></span><span class="op">(</span><span class="va">session_start</span>, <span class="va">session_end</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>overlaps <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">int_overlaps</a></span><span class="op">(</span><span class="va">interval</span>, <span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/r/utils/head.html">head</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html">kbl</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table class="table" style="font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;">
+<thead><tr>
+<th style="text-align:left;">
+pid
+</th>
+<th style="text-align:left;">
+session_start
+</th>
+<th style="text-align:left;">
+session_end
+</th>
+<th style="text-align:left;">
+Game
+</th>
+<th style="text-align:right;">
+interval
+</th>
+<th style="text-align:right;">
+Hours
+</th>
+<th style="text-align:right;">
+interval_merged
+</th>
+<th style="text-align:left;">
+overlaps
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 02:59:26
+</td>
+<td style="text-align:left;">
+2021-07-03 04:40:27
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 02:59:26 UTC–2021-07-03 04:40:27 UTC
+</td>
+<td style="text-align:right;">
+1.6836111
+</td>
+<td style="text-align:right;">
+2021-07-03 02:59:26 UTC–2021-07-03 04:40:27 UTC
+</td>
+<td style="text-align:left;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 03:03:19
+</td>
+<td style="text-align:left;">
+2021-07-03 04:26:54
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 03:03:19 UTC–2021-07-03 04:26:54 UTC
+</td>
+<td style="text-align:right;">
+1.3930556
+</td>
+<td style="text-align:right;">
+NA–NA
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 06:55:19
+</td>
+<td style="text-align:left;">
+2021-07-03 07:33:04
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 06:55:19 UTC–2021-07-03 07:33:04 UTC
+</td>
+<td style="text-align:right;">
+0.6291667
+</td>
+<td style="text-align:right;">
+2021-07-03 06:55:19 UTC–2021-07-03 07:33:04 UTC
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 08:00:01
+</td>
+<td style="text-align:left;">
+2021-07-03 08:01:49
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 08:00:01 UTC–2021-07-03 08:01:49 UTC
+</td>
+<td style="text-align:right;">
+0.0300000
+</td>
+<td style="text-align:right;">
+2021-07-03 08:00:01 UTC–2021-07-03 08:01:49 UTC
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 08:15:07
+</td>
+<td style="text-align:left;">
+2021-07-03 11:50:21
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 08:15:07 UTC–2021-07-03 11:50:21 UTC
+</td>
+<td style="text-align:right;">
+3.5872222
+</td>
+<td style="text-align:right;">
+2021-07-03 08:15:07 UTC–2021-07-03 13:36:21 UTC
+</td>
+<td style="text-align:left;">
+FALSE
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+de9b7f238ba168b0
+</td>
+<td style="text-align:left;">
+2021-07-03 11:02:22
+</td>
+<td style="text-align:left;">
+2021-07-03 13:36:21
+</td>
+<td style="text-align:left;">
+AC:NH
+</td>
+<td style="text-align:right;">
+2021-07-03 11:02:22 UTC–2021-07-03 13:36:21 UTC
+</td>
+<td style="text-align:right;">
+2.5663889
+</td>
+<td style="text-align:right;">
+NA–NA
+</td>
+<td style="text-align:left;">
+TRUE
+</td>
+</tr>
+</tbody>
+</table></div>
+<p>We then replace the original intervals with the new ones (dropping many rows that are now redundant and set to NA), and then remove the now possibly invalid start and end times and durations (this corrected information is now contained in <code>interval</code>).</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">interval</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">rename</span><span class="op">(</span>interval <span class="op">=</span> <span class="va">interval_merged</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">drop_na</span><span class="op">(</span><span class="va">interval</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">interval</span><span class="op">)</span></code></pre></div>
+<p>We then re-remove sessions longer than 10h, which could have been created due to merging.</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://lubridate.tidyverse.org/reference/as.duration.html">as.duration</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span><span class="op">/</span><span class="fl">3600</span> <span class="op">&lt;=</span> <span class="fl">10</span><span class="op">)</span></code></pre></div>
+</div>
+</div>
+<div id="correlate-sessions-to-waves" class="section level3" number="2.2.3">
+<h3>
+<span class="header-section-number">2.2.3</span> Correlate sessions to waves<a class="anchor" aria-label="anchor" href="#correlate-sessions-to-waves"><i class="fas fa-link"></i></a>
+</h3>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Correlate game sessions to waves</span>
+<span class="co"># Start by expanding the survey data to include NAs for waves with no responses. This enables using telemetry for waves where survey wasn't completed.</span>
+
+<span class="co"># Complete data for all pid-wid combinations (all pids have 3 rows; new rows have NAs for all other variables)</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">complete</span><span class="op">(</span><span class="fu">nesting</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span><span class="op">)</span>, <span class="va">wid</span><span class="op">)</span>
+
+<span class="co"># If a survey wasn't responded to, replace start date with previous wave's date + two weeks. Enables creating a two-week window preceding "survey response" to count hours played.</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">arrange</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/pkg/multidplyr/man/partition.html">partition</a></span><span class="op">(</span><span class="va">cluster</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># Fill potential missing wave 2 with wave 1 + 14</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    StartDate <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">StartDate</span><span class="op">)</span>,
+      <span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">StartDate</span>, <span class="fl">1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span>,
+      <span class="va">StartDate</span>
+    <span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="co"># Fill potential missing wave 3 with wave 2 + 14</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    StartDate <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">StartDate</span><span class="op">)</span>,
+      <span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">StartDate</span>, <span class="fl">1</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span>,
+      <span class="va">StartDate</span>
+    <span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">collect</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span>
+
+<span class="co"># The survey data frame now has a row for each participant-wave, even when survey wasn't answered by that participant at that wave.</span>
+
+<span class="co"># Join all play sessions to every wave of each player</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span>, <span class="va">StartDate</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">left_join</span><span class="op">(</span><span class="va">d_t</span><span class="op">)</span>
+
+<span class="co"># Then keep only those sessions that were in that wave's time window:</span>
+<span class="co"># Is session start and/or end within 0-2 weeks preceding survey?</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    start_in <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">int_start</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span> <span class="op">%within%</span>
+      <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">interval</a></span><span class="op">(</span><span class="va">StartDate</span> <span class="op">-</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span>, <span class="va">StartDate</span><span class="op">)</span>,
+    end_in <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">int_end</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span> <span class="op">%within%</span>
+      <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">interval</a></span><span class="op">(</span><span class="va">StartDate</span> <span class="op">-</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span>, <span class="va">StartDate</span><span class="op">)</span>
+  <span class="op">)</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">start_in</span> <span class="op">|</span> <span class="va">end_in</span><span class="op">)</span>
+
+<span class="co"># Exact duration depends on if session was completely in window or partially</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    Hours <span class="op">=</span> <span class="fu">case_when</span><span class="op">(</span>
+      <span class="co"># Entire session in window: All time counts</span>
+      <span class="va">start_in</span> <span class="op">&amp;</span> <span class="va">end_in</span> <span class="op">~</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as.duration.html">as.duration</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span>,
+      <span class="co"># Started before window, ended within: start of window to end of session</span>
+      <span class="op">!</span><span class="va">start_in</span> <span class="op">&amp;</span> <span class="va">end_in</span> <span class="op">~</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as.duration.html">as.duration</a></span><span class="op">(</span>
+        <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">int_end</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span> <span class="op">-</span> <span class="op">(</span><span class="va">StartDate</span> <span class="op">-</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/period.html">days</a></span><span class="op">(</span><span class="fl">14</span><span class="op">)</span><span class="op">)</span>
+      <span class="op">)</span>,
+      <span class="co"># Started in window, ended after: Session start to end of window</span>
+      <span class="va">start_in</span> <span class="op">&amp;</span> <span class="op">!</span><span class="va">end_in</span> <span class="op">~</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/as.duration.html">as.duration</a></span><span class="op">(</span><span class="va">StartDate</span> <span class="op">-</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/interval.html">int_start</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Hours <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html">as.numeric</a></span><span class="op">(</span><span class="va">Hours</span><span class="op">)</span> <span class="op">/</span> <span class="fl">3600</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="histograms-of-session-durations" class="section level3" number="2.2.4">
+<h3>
+<span class="header-section-number">2.2.4</span> Histograms of session durations<a class="anchor" aria-label="anchor" href="#histograms-of-session-durations"><i class="fas fa-link"></i></a>
+</h3>
+<p>Then look at individual sessions’ durations. Recall that Apex Legends sessions are individual matches so they will look a lot shorter.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span><span class="va">Hours</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">geom_histogram</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">scale_x_continuous</span><span class="op">(</span>
+    <span class="st">"Duration (in hours) of individual sessions"</span>,
+    breaks <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/breaks_pretty.html">pretty_breaks</a></span><span class="op">(</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">+</span>
+  <span class="fu">scale_y_continuous</span><span class="op">(</span>expand <span class="op">=</span> <span class="fu">expansion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">facet_wrap</span><span class="op">(</span><span class="st">"Game"</span>, scales <span class="op">=</span> <span class="st">"free"</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></code></pre></div>
+<div class="figure" style="text-align: center">
+<span style="display:block;" id="fig:session-duration-histograms"></span>
+<img src="01-clean_files/figure-html/session-duration-histograms-1.png" alt="Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions)." width="672"><p class="caption">
+Figure 2.1: Histograms of individual session durations (after taking out bad sessions and merging overlapping sessions).
+</p>
+</div>
+</div>
+<div id="aggregate-session-durations" class="section level3" number="2.2.5">
+<h3>
+<span class="header-section-number">2.2.5</span> Aggregate session durations<a class="anchor" aria-label="anchor" href="#aggregate-session-durations"><i class="fas fa-link"></i></a>
+</h3>
+<p>Aggregate to sum hours for each wave</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Summarise per wave to sum hours and number of sessions</span>
+<span class="co"># this also sets sum hours to zero for people with no telemetry</span>
+<span class="va">d_t</span> <span class="op">&lt;-</span> <span class="va">d_t</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span>, <span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">summarise</span><span class="op">(</span>
+    Sessions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">Hours</span><span class="op">)</span><span class="op">)</span>,
+    Hours <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">Hours</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="co"># is 0 if all Hours are NA</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<p>These are the average session numbers and hours played in the total study period</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d_t</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">pid</span>, <span class="op">-</span><span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>
+    caption <span class="op">=</span> <span class="st">"Average session numbers and hours played in the whole study"</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:unnamed-chunk-4">Table 2.3: </span>Average session numbers and hours played in the whole study
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 82,820
+</th>
+<th style="text-align:left;">
+AC:NH, N = 34,739
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 2,941
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 4,587
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 37,009
+</th>
+<th style="text-align:left;">
+Outriders, N = 2,645
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 899
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Sessions
+</td>
+<td style="text-align:left;">
+6 (2, 15)
+</td>
+<td style="text-align:left;">
+11 (4, 19)
+</td>
+<td style="text-align:left;">
+61 (20, 124)
+</td>
+<td style="text-align:left;">
+4 (2, 10)
+</td>
+<td style="text-align:left;">
+3 (1, 8)
+</td>
+<td style="text-align:left;">
+3 (1, 8)
+</td>
+<td style="text-align:left;">
+3 (1, 7)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Hours
+</td>
+<td style="text-align:left;">
+4 (1, 11)
+</td>
+<td style="text-align:left;">
+6 (2, 15)
+</td>
+<td style="text-align:left;">
+8 (3, 17)
+</td>
+<td style="text-align:left;">
+2 (0, 7)
+</td>
+<td style="text-align:left;">
+3 (1, 8)
+</td>
+<td style="text-align:left;">
+3 (1, 13)
+</td>
+<td style="text-align:left;">
+4 (1, 10)
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> Median (IQR)
+</td>
+</tr></tfoot>
+</table></div>
+</div>
+<div id="merge-telemetry-to-survey-data" class="section level3" number="2.2.6">
+<h3>
+<span class="header-section-number">2.2.6</span> Merge telemetry to survey data<a class="anchor" aria-label="anchor" href="#merge-telemetry-to-survey-data"><i class="fas fa-link"></i></a>
+</h3>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Join back to survey data</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu">left_join</span><span class="op">(</span><span class="va">d</span>, <span class="va">d_t</span><span class="op">)</span>
+
+<span class="co"># This creates NA hours for people who didn't exist in telemetry,</span>
+<span class="co"># thus we can replace NAs with zeros.</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Hours <span class="op">=</span> <span class="fu">replace_na</span><span class="op">(</span><span class="va">Hours</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="exclude-participants-with-no-telemetry" class="section level3" number="2.2.7">
+<h3>
+<span class="header-section-number">2.2.7</span> Exclude participants with no telemetry<a class="anchor" aria-label="anchor" href="#exclude-participants-with-no-telemetry"><i class="fas fa-link"></i></a>
+</h3>
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Indicator if person played at wave</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Played <span class="op">=</span> <span class="va">Hours</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>
+
+<span class="co"># Create participant-level indicator of whether there was any telemetry</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    `# of waves with play` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">Played</span><span class="op">)</span>,
+    `Any waves with play` <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">`# of waves with play`</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span>
+
+<span class="co"># Table of waves with play by game</span>
+<span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu">distinct</span><span class="op">(</span>
+    <span class="va">Game</span>, <span class="va">pid</span>,
+    <span class="va">`# of waves with play`</span>,
+    <span class="va">`Any waves with play`</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>
+    caption <span class="op">=</span> <span class="st">"Summary of participants with and without responses."</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:exclude-no-telemetry">Table 2.4: </span>Summary of participants with and without responses.
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 92,130
+</th>
+<th style="text-align:left;">
+AC:NH, N = 14,360
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 1,371
+</th>
+<th style="text-align:left;">
+EVE Online, N = 914
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 3,169
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 66,993
+</th>
+<th style="text-align:left;">
+Outriders, N = 1,909
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 3,414
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+# of waves with play
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+0
+</td>
+<td style="text-align:left;">
+54,100 (59%)
+</td>
+<td style="text-align:left;">
+714 (5.0%)
+</td>
+<td style="text-align:left;">
+213 (16%)
+</td>
+<td style="text-align:left;">
+914 (100%)
+</td>
+<td style="text-align:left;">
+1,188 (37%)
+</td>
+<td style="text-align:left;">
+47,735 (71%)
+</td>
+<td style="text-align:left;">
+379 (20%)
+</td>
+<td style="text-align:left;">
+2,957 (87%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+1
+</td>
+<td style="text-align:left;">
+11,512 (12%)
+</td>
+<td style="text-align:left;">
+1,896 (13%)
+</td>
+<td style="text-align:left;">
+175 (13%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+570 (18%)
+</td>
+<td style="text-align:left;">
+7,919 (12%)
+</td>
+<td style="text-align:left;">
+771 (40%)
+</td>
+<td style="text-align:left;">
+181 (5.3%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+2
+</td>
+<td style="text-align:left;">
+8,627 (9.4%)
+</td>
+<td style="text-align:left;">
+2,407 (17%)
+</td>
+<td style="text-align:left;">
+183 (13%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+494 (16%)
+</td>
+<td style="text-align:left;">
+5,009 (7.5%)
+</td>
+<td style="text-align:left;">
+424 (22%)
+</td>
+<td style="text-align:left;">
+110 (3.2%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+3
+</td>
+<td style="text-align:left;">
+17,891 (19%)
+</td>
+<td style="text-align:left;">
+9,343 (65%)
+</td>
+<td style="text-align:left;">
+800 (58%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+917 (29%)
+</td>
+<td style="text-align:left;">
+6,330 (9.4%)
+</td>
+<td style="text-align:left;">
+335 (18%)
+</td>
+<td style="text-align:left;">
+166 (4.9%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Any waves with play
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+<td style="text-align:left;">
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+TRUE
+</td>
+<td style="text-align:left;">
+38,030 (41%)
+</td>
+<td style="text-align:left;">
+13,646 (95%)
+</td>
+<td style="text-align:left;">
+1,158 (84%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+1,981 (63%)
+</td>
+<td style="text-align:left;">
+19,258 (29%)
+</td>
+<td style="text-align:left;">
+1,530 (80%)
+</td>
+<td style="text-align:left;">
+457 (13%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+FALSE
+</td>
+<td style="text-align:left;">
+54,100 (59%)
+</td>
+<td style="text-align:left;">
+714 (5.0%)
+</td>
+<td style="text-align:left;">
+213 (16%)
+</td>
+<td style="text-align:left;">
+914 (100%)
+</td>
+<td style="text-align:left;">
+1,188 (37%)
+</td>
+<td style="text-align:left;">
+47,735 (71%)
+</td>
+<td style="text-align:left;">
+379 (20%)
+</td>
+<td style="text-align:left;">
+2,957 (87%)
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> n (%)
+</td>
+</tr></tfoot>
+</table></div>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Take out all who didn't answer a single wave</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">d</span>, <span class="va">`Any waves with play`</span> <span class="op">==</span> <span class="st">"TRUE"</span><span class="op">)</span>
+
+<span class="co"># Remove the indicators</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">d</span>, <span class="op">-</span><span class="va">`# of waves with play`</span>, <span class="op">-</span><span class="va">`Any waves with play`</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="exclude-extreme-player-wave-hours-played" class="section level3" number="2.2.8">
+<h3>
+<span class="header-section-number">2.2.8</span> Exclude extreme player-wave hours played<a class="anchor" aria-label="anchor" href="#exclude-extreme-player-wave-hours-played"><i class="fas fa-link"></i></a>
+</h3>
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Over_16h_day_telemetry <span class="op">=</span> <span class="va">Hours</span> <span class="op">/</span> <span class="fl">14</span> <span class="op">&gt;</span> <span class="fl">16</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Over_16h_day_subjective <span class="op">=</span> <span class="va">hours_est</span> <span class="op">/</span> <span class="fl">14</span> <span class="op">&gt;</span> <span class="fl">16</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="fu"><a href="https://tidyselect.r-lib.org/reference/starts_with.html">starts_with</a></span><span class="op">(</span><span class="st">"Over_"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>
+    caption <span class="op">=</span> <span class="st">"Numbers (%) of person-waves with more than 16h/day of play"</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:exclude-extreme-wave-hours">Table 2.5: </span>Numbers (%) of person-waves with more than 16h/day of play
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 114,090
+</th>
+<th style="text-align:left;">
+AC:NH, N = 40,938
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 3,474
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 5,943
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 57,774
+</th>
+<th style="text-align:left;">
+Outriders, N = 4,590
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 1,371
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Over_16h_day_telemetry
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+Over_16h_day_subjective
+</td>
+<td style="text-align:left;">
+128 (0.2%)
+</td>
+<td style="text-align:left;">
+84 (0.4%)
+</td>
+<td style="text-align:left;">
+8 (0.5%)
+</td>
+<td style="text-align:left;">
+6 (0.2%)
+</td>
+<td style="text-align:left;">
+26 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+2 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+2 (0.3%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Unknown
+</td>
+<td style="text-align:left;">
+52,323
+</td>
+<td style="text-align:left;">
+18,660
+</td>
+<td style="text-align:left;">
+1,789
+</td>
+<td style="text-align:left;">
+2,693
+</td>
+<td style="text-align:left;">
+26,063
+</td>
+<td style="text-align:left;">
+2,360
+</td>
+<td style="text-align:left;">
+758
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> n (%)
+</td>
+</tr></tfoot>
+</table></div>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    Hours <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="va">Hours</span> <span class="op">/</span> <span class="fl">14</span> <span class="op">&gt;</span> <span class="fl">8</span>, <span class="cn">NaN</span>, <span class="va">Hours</span><span class="op">)</span>,
+    hours_est <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="va">hours_est</span> <span class="op">/</span> <span class="fl">14</span> <span class="op">&gt;</span> <span class="fl">8</span>, <span class="cn">NaN</span>, <span class="va">hours_est</span><span class="op">)</span>
+  <span class="op">)</span></code></pre></div>
+</div>
+</div>
+<div id="exclude-bad-survey-intervals" class="section level2" number="2.3">
+<h2>
+<span class="header-section-number">2.3</span> Exclude bad survey intervals<a class="anchor" aria-label="anchor" href="#exclude-bad-survey-intervals"><i class="fas fa-link"></i></a>
+</h2>
+<p>Participants could complete the survey waves whenever after receiving the invitation emails. Therefore participants could e.g. complete wave 3 and then be reminded to go back to the wave 2 invitation email and do it. We therefore exclude all person-waves with negative intervals. We do this here so that the full join could be performed above. Note, interval is NA if the wave wasn’t completed, resulting to unknown values below.</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Negative_interval <span class="op">=</span> <span class="va">interval</span> <span class="op">&lt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">Negative_interval</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>
+    caption <span class="op">=</span> <span class="st">"Numbers (%) of person-waves with negative intervals"</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
+<div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
+<caption style="font-size: initial !important;">
+<span id="tab:exclude-survey-intervals">Table 2.6: </span>Numbers (%) of person-waves with negative intervals
+</caption>
+<thead><tr>
+<th style="text-align:left;">
+Characteristic
+</th>
+<th style="text-align:left;">
+Overall, N = 114,090
+</th>
+<th style="text-align:left;">
+AC:NH, N = 40,938
+</th>
+<th style="text-align:left;">
+Apex Legends, N = 3,474
+</th>
+<th style="text-align:left;">
+Forza Horizon 4, N = 5,943
+</th>
+<th style="text-align:left;">
+Gran Turismo Sport, N = 57,774
+</th>
+<th style="text-align:left;">
+Outriders, N = 4,590
+</th>
+<th style="text-align:left;">
+The Crew 2, N = 1,371
+</th>
+</tr></thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+Negative_interval
+</td>
+<td style="text-align:left;">
+34 (0.1%)
+</td>
+<td style="text-align:left;">
+19 (0.2%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+1 (&lt;0.1%)
+</td>
+<td style="text-align:left;">
+14 (0.1%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+<td style="text-align:left;">
+0 (0%)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Unknown
+</td>
+<td style="text-align:left;">
+89,412
+</td>
+<td style="text-align:left;">
+32,232
+</td>
+<td style="text-align:left;">
+2,798
+</td>
+<td style="text-align:left;">
+4,610
+</td>
+<td style="text-align:left;">
+44,626
+</td>
+<td style="text-align:left;">
+3,939
+</td>
+<td style="text-align:left;">
+1,207
+</td>
+</tr>
+</tbody>
+<tfoot><tr>
+<td style="padding: 0; " colspan="100%">
+<sup>1</sup> n (%)
+</td>
+</tr></tfoot>
+</table></div>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">interval</span> <span class="op">&gt;</span> <span class="fl">0</span> <span class="op">|</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html">is.na</a></span><span class="op">(</span><span class="va">interval</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="save-cleaned-data" class="section level2" number="2.4">
+<h2>
+<span class="header-section-number">2.4</span> Save cleaned data<a class="anchor" aria-label="anchor" href="#save-cleaned-data"><i class="fas fa-link"></i></a>
+</h2>
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu">write_rds</span><span class="op">(</span><span class="va">d</span>, file <span class="op">=</span> <span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"cleaned_data.rds"</span><span class="op">)</span>, compress <span class="op">=</span> <span class="st">"gz"</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="test-data-cleaning" class="section level2" number="2.5">
+<h2>
+<span class="header-section-number">2.5</span> Test data cleaning<a class="anchor" aria-label="anchor" href="#test-data-cleaning"><i class="fas fa-link"></i></a>
+</h2>
+<p>Run some tests on the cleaned data.</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://testthat.r-lib.org">testthat</a></span><span class="op">)</span>
+<span class="fu"><a href="https://testthat.r-lib.org/reference/test_dir.html">test_dir</a></span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"R/tests/testthat"</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+<pre><code>## ✓ | F W S  OK | Context
+## 
+⠏ |         0 | session-overlap                                                 
+⠋ |         1 | session-overlap                                                 
+⠸ |         4 | session-overlap                                                 
+⠼ |         5 | session-overlap                                                 
+✓ |         5 | session-overlap [46.7s]
+## 
+## ══ Results ═════════════════════════════════════════════════════════════════════
+## Duration: 46.7 s
+## 
+## [ FAIL 0 | WARN 0 | SKIP 0 | PASS 5 ]</code></pre>
+</div>
+<div id="system-information" class="section level2" number="2.6">
+<h2>
+<span class="header-section-number">2.6</span> System information<a class="anchor" aria-label="anchor" href="#system-information"><i class="fas fa-link"></i></a>
+</h2>
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
+<pre><code>## R version 4.1.1 (2021-08-10)
+## Platform: x86_64-apple-darwin17.0 (64-bit)
+## Running under: macOS Big Sur 10.16
+## 
+## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## 
+## locale:
+## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
+## 
+## attached base packages:
+## [1] stats     graphics  grDevices datasets  utils     methods   base     
+## 
+## other attached packages:
+##  [1] testthat_3.1.0    sessioninfo_1.1.1 forcats_0.5.1     stringr_1.4.0    
+##  [5] dplyr_1.0.7       purrr_0.3.4       readr_2.0.2       tidyr_1.1.4      
+##  [9] tibble_3.1.5      ggplot2_3.3.5     tidyverse_1.3.1   showtext_0.9-4   
+## [13] showtextdb_3.0    sysfonts_0.8.5    multidplyr_0.1.0  gtsummary_1.4.2  
+## [17] lubridate_1.8.0   scales_1.1.1      here_1.0.1        janitor_2.1.0    
+## [21] kableExtra_1.3.4  knitr_1.36       
+## 
+## loaded via a namespace (and not attached):
+##  [1] fs_1.5.0            bit64_4.0.5         webshot_0.5.2      
+##  [4] httr_1.4.2          rprojroot_2.0.2     tools_4.1.1        
+##  [7] backports_1.2.1     bslib_0.3.1         utf8_1.2.2         
+## [10] R6_2.5.1            DBI_1.1.1           colorspace_2.0-2   
+## [13] withr_2.4.2         processx_3.5.2      tidyselect_1.1.1   
+## [16] downlit_0.2.1       bit_4.0.4           curl_4.3.2         
+## [19] compiler_4.1.1      textshaping_0.3.5   cli_3.0.1          
+## [22] rvest_1.0.1         gt_0.3.1            xml2_1.3.2         
+## [25] desc_1.4.0          labeling_0.4.2      stringfish_0.15.2  
+## [28] bookdown_0.24       sass_0.4.0          callr_3.7.0        
+## [31] systemfonts_1.0.2   digest_0.6.28       rmarkdown_2.11     
+## [34] svglite_2.0.0       pkgconfig_2.0.3     htmltools_0.5.2    
+## [37] highr_0.9           dbplyr_2.1.1        fastmap_1.1.0      
+## [40] rlang_0.4.11        readxl_1.3.1        rstudioapi_0.13    
+## [43] farver_2.1.0        RApiSerialize_0.1.0 jquerylib_0.1.4    
+## [46] generics_0.1.0      jsonlite_1.7.2      vroom_1.5.5        
+## [49] magrittr_2.0.1      Matrix_1.3-4        waldo_0.3.1        
+## [52] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
+## [55] lifecycle_1.0.1     stringi_1.7.5       yaml_2.2.1         
+## [58] snakecase_0.11.0    grid_4.1.1          parallel_4.1.1     
+## [61] crayon_1.4.1        lattice_0.20-45     haven_2.4.3        
+## [64] splines_4.1.1       hms_1.1.1           ps_1.6.0           
+## [67] pillar_1.6.3        pkgload_1.2.2       codetools_0.2-18   
+## [70] reprex_2.0.1        glue_1.4.2          evaluate_0.14      
+## [73] RcppParallel_5.1.4  broom.helpers_1.4.0 renv_0.14.0        
+## [76] modelr_0.1.8        vctrs_0.3.8         tzdb_0.1.2         
+## [79] cellranger_1.1.0    gtable_0.3.0        qs_0.25.1          
+## [82] assertthat_0.2.1    xfun_0.26           broom_0.7.9        
+## [85] ragg_1.1.3          survival_3.2-13     viridisLite_0.4.0  
+## [88] ellipsis_0.3.2</code></pre>
+
+</div>
+</div>
+  <div class="chapter-nav">
+<div class="prev"><a href="index.html"><span class="header-section-number">1</span> Introduction</a></div>
+<div class="next"><a href="descriptives.html"><span class="header-section-number">3</span> Descriptives</a></div>
+</div></main><div class="col-md-3 col-lg-2 d-none d-md-block sidebar sidebar-chapter">
+    <nav id="toc" data-toggle="toc" aria-label="On this page"><h2>On this page</h2>
+      <ul class="nav navbar-nav">
+<li><a class="nav-link" href="#data-wrangling"><span class="header-section-number">2</span> Data wrangling</a></li>
+<li>
+<a class="nav-link" href="#survey"><span class="header-section-number">2.1</span> Survey</a><ul class="nav navbar-nav"><li><a class="nav-link" href="#exclude-non-responders"><span class="header-section-number">2.1.1</span> Exclude non-responders</a></li></ul>
+</li>
+<li>
+<a class="nav-link" href="#telemetry"><span class="header-section-number">2.2</span> Telemetry</a><ul class="nav navbar-nav">
+<li><a class="nav-link" href="#a-note-on-apex-legends-sessions"><span class="header-section-number">2.2.1</span> A note on Apex Legends sessions</a></li>
+<li><a class="nav-link" href="#clean-sessions"><span class="header-section-number">2.2.2</span> Clean sessions</a></li>
+<li><a class="nav-link" href="#correlate-sessions-to-waves"><span class="header-section-number">2.2.3</span> Correlate sessions to waves</a></li>
+<li><a class="nav-link" href="#histograms-of-session-durations"><span class="header-section-number">2.2.4</span> Histograms of session durations</a></li>
+<li><a class="nav-link" href="#aggregate-session-durations"><span class="header-section-number">2.2.5</span> Aggregate session durations</a></li>
+<li><a class="nav-link" href="#merge-telemetry-to-survey-data"><span class="header-section-number">2.2.6</span> Merge telemetry to survey data</a></li>
+<li><a class="nav-link" href="#exclude-participants-with-no-telemetry"><span class="header-section-number">2.2.7</span> Exclude participants with no telemetry</a></li>
+<li><a class="nav-link" href="#exclude-extreme-player-wave-hours-played"><span class="header-section-number">2.2.8</span> Exclude extreme player-wave hours played</a></li>
+</ul>
+</li>
+<li><a class="nav-link" href="#exclude-bad-survey-intervals"><span class="header-section-number">2.3</span> Exclude bad survey intervals</a></li>
+<li><a class="nav-link" href="#save-cleaned-data"><span class="header-section-number">2.4</span> Save cleaned data</a></li>
+<li><a class="nav-link" href="#test-data-cleaning"><span class="header-section-number">2.5</span> Test data cleaning</a></li>
+<li><a class="nav-link" href="#system-information"><span class="header-section-number">2.6</span> System information</a></li>
+</ul>
+
+      <div class="book-extra">
+        <ul class="list-unstyled">
+<li><a id="book-source" href="https://github.com/digital-wellbeing/gametime-longitudinal/blob/main/docs/01-clean.Rmd">View source <i class="fab fa-github"></i></a></li>
+          <li><a id="book-edit" href="https://github.com/digital-wellbeing/gametime-longitudinal/edit/main/docs/01-clean.Rmd">Edit this page <i class="fab fa-github"></i></a></li>
+        </ul>
+</div>
+    </nav>
+</div>
+
+</div>
+</div> <!-- .container -->
+
+<footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>"<strong>Game play and well-being | Online analysis supplement</strong>" was written by Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski. It was last built on 2021-10-11.</p>
+  </div>
+
+  <div class="col-12 col-md-6 mt-3">
+    <p>This book was built by the <a class="text-light" href="https://bookdown.org">bookdown</a> R package.</p>
+  </div>
+
+</div></div>
+</footer>
+</body>
+</html>
