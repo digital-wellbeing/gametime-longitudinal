@@ -434,6 +434,13 @@ t_al <- t_al %>%
     Game = "Apex Legends"
   )
 
+# Eve
+t_eo <- read_csv(here("Data", "telemetry-eve-online.csv.gz"))
+t_eo <- t_eo %>% 
+  mutate(
+    Game = "EVE Online"
+  )
+
 # Forza Horizon 4
 t_fh <- read_csv(here("Data", "telemetry-forza-horizon-4.csv.gz"))
 t_fh <- t_fh %>%
@@ -473,7 +480,7 @@ Merge games tables to one table
 ```r
 # Merge games' telemetry to one table
 d_t <- bind_rows(
-  t_acnh, t_al, t_fh, t_gts, t_or, t_tc2
+  t_acnh, t_al, t_eo, t_fh, t_gts, t_or, t_tc2
 )
 ```
 
@@ -524,9 +531,10 @@ d_t %>%
  <thead>
   <tr>
    <th style="text-align:left;"> Characteristic </th>
-   <th style="text-align:left;"> Overall, N = 1,604,414 </th>
+   <th style="text-align:left;"> Overall, N = 1,697,802 </th>
    <th style="text-align:left;"> AC:NH, N = 640,766 </th>
    <th style="text-align:left;"> Apex Legends, N = 383,200 </th>
+   <th style="text-align:left;"> EVE Online, N = 93,388 </th>
    <th style="text-align:left;"> Forza Horizon 4, N = 47,905 </th>
    <th style="text-align:left;"> Gran Turismo Sport, N = 363,735 </th>
    <th style="text-align:left;"> Outriders, N = 160,351 </th>
@@ -539,6 +547,7 @@ d_t %>%
    <td style="text-align:left;"> 0.37 (-189,092.51, 346,154.65) </td>
    <td style="text-align:left;"> 0.55 (-189,092.51, 346,154.65) </td>
    <td style="text-align:left;"> 0.10 (-0.30, 1.47) </td>
+   <td style="text-align:left;"> 0.38 (0.00, 23.93) </td>
    <td style="text-align:left;"> 0.42 (0.00, 23.92) </td>
    <td style="text-align:left;"> 0.66 (0.00, 24.00) </td>
    <td style="text-align:left;"> 0.94 (0.00, 719.22) </td>
@@ -551,14 +560,16 @@ d_t %>%
    <td style="text-align:left;"> 2 (&lt;0.1%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 1 (&lt;0.1%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Session over 10h </td>
-   <td style="text-align:left;"> 30,573 (1.9%) </td>
+   <td style="text-align:left;"> 32,828 (1.9%) </td>
    <td style="text-align:left;"> 20,921 (3.3%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 2,255 (2.4%) </td>
    <td style="text-align:left;"> 95 (0.2%) </td>
    <td style="text-align:left;"> 1,774 (0.5%) </td>
    <td style="text-align:left;"> 7,518 (4.7%) </td>
@@ -566,9 +577,10 @@ d_t %>%
   </tr>
   <tr>
    <td style="text-align:left;"> Session before </td>
-   <td style="text-align:left;"> 107,417 (6.7%) </td>
+   <td style="text-align:left;"> 107,417 (6.3%) </td>
    <td style="text-align:left;"> 694 (0.1%) </td>
    <td style="text-align:left;"> 5,879 (1.5%) </td>
+   <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 100,844 (63%) </td>
@@ -577,6 +589,7 @@ d_t %>%
   <tr>
    <td style="text-align:left;"> Session after </td>
    <td style="text-align:left;"> 1,017 (&lt;0.1%) </td>
+   <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
@@ -753,6 +766,8 @@ d_t <- d_t %>%
 ### Correlate sessions to waves
 
 
+
+
 ```r
 # Correlate game sessions to waves
 # Start by expanding the survey data to include NAs for waves with no responses. This enables using telemetry for waves where survey wasn't completed.
@@ -879,9 +894,10 @@ d_t %>%
  <thead>
   <tr>
    <th style="text-align:left;"> Characteristic </th>
-   <th style="text-align:left;"> Overall, N = 82,820 </th>
+   <th style="text-align:left;"> Overall, N = 85,342 </th>
    <th style="text-align:left;"> AC:NH, N = 34,739 </th>
    <th style="text-align:left;"> Apex Legends, N = 2,941 </th>
+   <th style="text-align:left;"> EVE Online, N = 2,522 </th>
    <th style="text-align:left;"> Forza Horizon 4, N = 4,587 </th>
    <th style="text-align:left;"> Gran Turismo Sport, N = 37,009 </th>
    <th style="text-align:left;"> Outriders, N = 2,645 </th>
@@ -894,6 +910,7 @@ d_t %>%
    <td style="text-align:left;"> 6 (2, 15) </td>
    <td style="text-align:left;"> 11 (4, 19) </td>
    <td style="text-align:left;"> 61 (20, 124) </td>
+   <td style="text-align:left;"> 15 (9, 24) </td>
    <td style="text-align:left;"> 4 (2, 10) </td>
    <td style="text-align:left;"> 3 (1, 8) </td>
    <td style="text-align:left;"> 3 (1, 8) </td>
@@ -904,6 +921,7 @@ d_t %>%
    <td style="text-align:left;"> 4 (1, 11) </td>
    <td style="text-align:left;"> 6 (2, 15) </td>
    <td style="text-align:left;"> 8 (3, 17) </td>
+   <td style="text-align:left;"> 10 (1, 33) </td>
    <td style="text-align:left;"> 2 (0, 7) </td>
    <td style="text-align:left;"> 3 (1, 8) </td>
    <td style="text-align:left;"> 3 (1, 13) </td>
@@ -989,10 +1007,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> 0 </td>
-   <td style="text-align:left;"> 54,100 (59%) </td>
+   <td style="text-align:left;"> 53,195 (58%) </td>
    <td style="text-align:left;"> 714 (5.0%) </td>
    <td style="text-align:left;"> 213 (16%) </td>
-   <td style="text-align:left;"> 914 (100%) </td>
+   <td style="text-align:left;"> 9 (1.0%) </td>
    <td style="text-align:left;"> 1,188 (37%) </td>
    <td style="text-align:left;"> 47,735 (71%) </td>
    <td style="text-align:left;"> 379 (20%) </td>
@@ -1000,10 +1018,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> 1 </td>
-   <td style="text-align:left;"> 11,512 (12%) </td>
+   <td style="text-align:left;"> 11,562 (13%) </td>
    <td style="text-align:left;"> 1,896 (13%) </td>
    <td style="text-align:left;"> 175 (13%) </td>
-   <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 50 (5.5%) </td>
    <td style="text-align:left;"> 570 (18%) </td>
    <td style="text-align:left;"> 7,919 (12%) </td>
    <td style="text-align:left;"> 771 (40%) </td>
@@ -1011,10 +1029,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> 2 </td>
-   <td style="text-align:left;"> 8,627 (9.4%) </td>
+   <td style="text-align:left;"> 8,720 (9.5%) </td>
    <td style="text-align:left;"> 2,407 (17%) </td>
    <td style="text-align:left;"> 183 (13%) </td>
-   <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 93 (10%) </td>
    <td style="text-align:left;"> 494 (16%) </td>
    <td style="text-align:left;"> 5,009 (7.5%) </td>
    <td style="text-align:left;"> 424 (22%) </td>
@@ -1022,10 +1040,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> 3 </td>
-   <td style="text-align:left;"> 17,891 (19%) </td>
+   <td style="text-align:left;"> 18,653 (20%) </td>
    <td style="text-align:left;"> 9,343 (65%) </td>
    <td style="text-align:left;"> 800 (58%) </td>
-   <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 762 (83%) </td>
    <td style="text-align:left;"> 917 (29%) </td>
    <td style="text-align:left;"> 6,330 (9.4%) </td>
    <td style="text-align:left;"> 335 (18%) </td>
@@ -1044,10 +1062,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> TRUE </td>
-   <td style="text-align:left;"> 38,030 (41%) </td>
+   <td style="text-align:left;"> 38,935 (42%) </td>
    <td style="text-align:left;"> 13,646 (95%) </td>
    <td style="text-align:left;"> 1,158 (84%) </td>
-   <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 905 (99%) </td>
    <td style="text-align:left;"> 1,981 (63%) </td>
    <td style="text-align:left;"> 19,258 (29%) </td>
    <td style="text-align:left;"> 1,530 (80%) </td>
@@ -1055,10 +1073,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> FALSE </td>
-   <td style="text-align:left;"> 54,100 (59%) </td>
+   <td style="text-align:left;"> 53,195 (58%) </td>
    <td style="text-align:left;"> 714 (5.0%) </td>
    <td style="text-align:left;"> 213 (16%) </td>
-   <td style="text-align:left;"> 914 (100%) </td>
+   <td style="text-align:left;"> 9 (1.0%) </td>
    <td style="text-align:left;"> 1,188 (37%) </td>
    <td style="text-align:left;"> 47,735 (71%) </td>
    <td style="text-align:left;"> 379 (20%) </td>
@@ -1098,9 +1116,10 @@ d %>%
  <thead>
   <tr>
    <th style="text-align:left;"> Characteristic </th>
-   <th style="text-align:left;"> Overall, N = 114,090 </th>
+   <th style="text-align:left;"> Overall, N = 116,805 </th>
    <th style="text-align:left;"> AC:NH, N = 40,938 </th>
    <th style="text-align:left;"> Apex Legends, N = 3,474 </th>
+   <th style="text-align:left;"> EVE Online, N = 2,715 </th>
    <th style="text-align:left;"> Forza Horizon 4, N = 5,943 </th>
    <th style="text-align:left;"> Gran Turismo Sport, N = 57,774 </th>
    <th style="text-align:left;"> Outriders, N = 4,590 </th>
@@ -1117,12 +1136,14 @@ d %>%
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 0 (0%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Over_16h_day_subjective </td>
-   <td style="text-align:left;"> 128 (0.2%) </td>
+   <td style="text-align:left;"> 130 (0.2%) </td>
    <td style="text-align:left;"> 84 (0.4%) </td>
    <td style="text-align:left;"> 8 (0.5%) </td>
+   <td style="text-align:left;"> 2 (0.2%) </td>
    <td style="text-align:left;"> 6 (0.2%) </td>
    <td style="text-align:left;"> 26 (&lt;0.1%) </td>
    <td style="text-align:left;"> 2 (&lt;0.1%) </td>
@@ -1130,9 +1151,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Unknown </td>
-   <td style="text-align:left;"> 52,323 </td>
+   <td style="text-align:left;"> 53,709 </td>
    <td style="text-align:left;"> 18,660 </td>
    <td style="text-align:left;"> 1,789 </td>
+   <td style="text-align:left;"> 1,386 </td>
    <td style="text-align:left;"> 2,693 </td>
    <td style="text-align:left;"> 26,063 </td>
    <td style="text-align:left;"> 2,360 </td>
@@ -1173,9 +1195,10 @@ d %>%
  <thead>
   <tr>
    <th style="text-align:left;"> Characteristic </th>
-   <th style="text-align:left;"> Overall, N = 114,090 </th>
+   <th style="text-align:left;"> Overall, N = 116,805 </th>
    <th style="text-align:left;"> AC:NH, N = 40,938 </th>
    <th style="text-align:left;"> Apex Legends, N = 3,474 </th>
+   <th style="text-align:left;"> EVE Online, N = 2,715 </th>
    <th style="text-align:left;"> Forza Horizon 4, N = 5,943 </th>
    <th style="text-align:left;"> Gran Turismo Sport, N = 57,774 </th>
    <th style="text-align:left;"> Outriders, N = 4,590 </th>
@@ -1185,9 +1208,10 @@ d %>%
 <tbody>
   <tr>
    <td style="text-align:left;"> Negative_interval </td>
-   <td style="text-align:left;"> 34 (0.1%) </td>
+   <td style="text-align:left;"> 35 (0.1%) </td>
    <td style="text-align:left;"> 19 (0.2%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
+   <td style="text-align:left;"> 1 (0.2%) </td>
    <td style="text-align:left;"> 1 (&lt;0.1%) </td>
    <td style="text-align:left;"> 14 (0.1%) </td>
    <td style="text-align:left;"> 0 (0%) </td>
@@ -1195,9 +1219,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Unknown </td>
-   <td style="text-align:left;"> 89,412 </td>
+   <td style="text-align:left;"> 91,717 </td>
    <td style="text-align:left;"> 32,232 </td>
    <td style="text-align:left;"> 2,798 </td>
+   <td style="text-align:left;"> 2,305 </td>
    <td style="text-align:left;"> 4,610 </td>
    <td style="text-align:left;"> 44,626 </td>
    <td style="text-align:left;"> 3,939 </td>
@@ -1231,10 +1256,10 @@ test_dir(here("R/tests/testthat"))
 
 ```
 ## ✓ | F W S  OK | Context
-## ⠏ |         0 | session-overlap                                                 ⠋ |         1 | session-overlap                                                 ⠸ |         4 | session-overlap                                                 ⠼ |         5 | session-overlap                                                 ✓ |         5 | session-overlap [46.7s]
+## ⠏ |         0 | session-overlap                                                 ⠋ |         1 | session-overlap                                                 ⠸ |         4 | session-overlap                                                 ⠼ |         5 | session-overlap                                                 ✓ |         5 | session-overlap [63.1s]
 ## 
 ## ══ Results ═════════════════════════════════════════════════════════════════════
-## Duration: 46.7 s
+## Duration: 63.1 s
 ## 
 ## [ FAIL 0 | WARN 0 | SKIP 0 | PASS 5 ]
 ```

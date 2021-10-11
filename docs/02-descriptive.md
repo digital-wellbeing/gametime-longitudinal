@@ -47,6 +47,10 @@ if (file.exists(data_path)) {
 # Make wave a nicely labelled factor
 d <- d %>%
   mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
+
+# Rename game to fit titles in plots
+d <- d %>% 
+  mutate(Game = if_else(Game == "Gran Turismo Sport", "GT Sport", Game))
 ```
 
 ## Demographics after exclusions
@@ -70,11 +74,12 @@ d %>%
  <thead>
   <tr>
    <th style="text-align:left;"> Characteristic </th>
-   <th style="text-align:left;"> Overall, N = 38,030 </th>
+   <th style="text-align:left;"> Overall, N = 38,935 </th>
    <th style="text-align:left;"> AC:NH, N = 13,646 </th>
    <th style="text-align:left;"> Apex Legends, N = 1,158 </th>
+   <th style="text-align:left;"> EVE Online, N = 905 </th>
    <th style="text-align:left;"> Forza Horizon 4, N = 1,981 </th>
-   <th style="text-align:left;"> Gran Turismo Sport, N = 19,258 </th>
+   <th style="text-align:left;"> GT Sport, N = 19,258 </th>
    <th style="text-align:left;"> Outriders, N = 1,530 </th>
    <th style="text-align:left;"> The Crew 2, N = 457 </th>
   </tr>
@@ -82,9 +87,10 @@ d %>%
 <tbody>
   <tr>
    <td style="text-align:left;"> Age </td>
-   <td style="text-align:left;"> 33 (25, 42) </td>
+   <td style="text-align:left;"> 34 (25, 42) </td>
    <td style="text-align:left;"> 32 (25, 41) </td>
    <td style="text-align:left;"> 25 (20, 32) </td>
+   <td style="text-align:left;"> 39 (31, 50) </td>
    <td style="text-align:left;"> 33 (24, 42) </td>
    <td style="text-align:left;"> 35 (25, 43) </td>
    <td style="text-align:left;"> 38 (32, 45) </td>
@@ -92,9 +98,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Missing </td>
-   <td style="text-align:left;"> 79 </td>
+   <td style="text-align:left;"> 82 </td>
    <td style="text-align:left;"> 29 </td>
    <td style="text-align:left;"> 5 </td>
+   <td style="text-align:left;"> 3 </td>
    <td style="text-align:left;"> 6 </td>
    <td style="text-align:left;"> 37 </td>
    <td style="text-align:left;"> 2 </td>
@@ -109,12 +116,14 @@ d %>%
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
    <td style="text-align:left;">  </td>
+   <td style="text-align:left;">  </td>
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Man </td>
-   <td style="text-align:left;"> 28,912 (76%) </td>
+   <td style="text-align:left;"> 29,765 (77%) </td>
    <td style="text-align:left;"> 5,451 (40%) </td>
    <td style="text-align:left;"> 1,002 (87%) </td>
+   <td style="text-align:left;"> 853 (95%) </td>
    <td style="text-align:left;"> 1,884 (95%) </td>
    <td style="text-align:left;"> 18,745 (98%) </td>
    <td style="text-align:left;"> 1,400 (92%) </td>
@@ -122,9 +131,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Non-binary / third gender </td>
-   <td style="text-align:left;"> 698 (1.8%) </td>
+   <td style="text-align:left;"> 705 (1.8%) </td>
    <td style="text-align:left;"> 557 (4.1%) </td>
    <td style="text-align:left;"> 25 (2.2%) </td>
+   <td style="text-align:left;"> 7 (0.8%) </td>
    <td style="text-align:left;"> 11 (0.6%) </td>
    <td style="text-align:left;"> 87 (0.5%) </td>
    <td style="text-align:left;"> 15 (1.0%) </td>
@@ -132,9 +142,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Prefer not to say </td>
-   <td style="text-align:left;"> 353 (0.9%) </td>
+   <td style="text-align:left;"> 363 (0.9%) </td>
    <td style="text-align:left;"> 183 (1.3%) </td>
    <td style="text-align:left;"> 17 (1.5%) </td>
+   <td style="text-align:left;"> 10 (1.1%) </td>
    <td style="text-align:left;"> 12 (0.6%) </td>
    <td style="text-align:left;"> 119 (0.6%) </td>
    <td style="text-align:left;"> 16 (1.0%) </td>
@@ -142,9 +153,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Woman </td>
-   <td style="text-align:left;"> 7,985 (21%) </td>
+   <td style="text-align:left;"> 8,017 (21%) </td>
    <td style="text-align:left;"> 7,426 (55%) </td>
    <td style="text-align:left;"> 109 (9.5%) </td>
+   <td style="text-align:left;"> 32 (3.5%) </td>
    <td style="text-align:left;"> 68 (3.4%) </td>
    <td style="text-align:left;"> 267 (1.4%) </td>
    <td style="text-align:left;"> 97 (6.3%) </td>
@@ -152,9 +164,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Missing </td>
-   <td style="text-align:left;"> 82 </td>
+   <td style="text-align:left;"> 85 </td>
    <td style="text-align:left;"> 29 </td>
    <td style="text-align:left;"> 5 </td>
+   <td style="text-align:left;"> 3 </td>
    <td style="text-align:left;"> 6 </td>
    <td style="text-align:left;"> 40 </td>
    <td style="text-align:left;"> 2 </td>
@@ -162,9 +175,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;"> Experience </td>
-   <td style="text-align:left;"> 23 (15, 30) </td>
+   <td style="text-align:left;"> 23 (16, 30) </td>
    <td style="text-align:left;"> 22 (15, 30) </td>
    <td style="text-align:left;"> 17 (10, 25) </td>
+   <td style="text-align:left;"> 25 (20, 32) </td>
    <td style="text-align:left;"> 23 (15, 30) </td>
    <td style="text-align:left;"> 25 (16, 30) </td>
    <td style="text-align:left;"> 30 (22, 35) </td>
@@ -172,9 +186,10 @@ d %>%
   </tr>
   <tr>
    <td style="text-align:left;padding-left: 2em;" indentlevel="1"> Missing </td>
-   <td style="text-align:left;"> 176 </td>
+   <td style="text-align:left;"> 181 </td>
    <td style="text-align:left;"> 62 </td>
    <td style="text-align:left;"> 8 </td>
+   <td style="text-align:left;"> 5 </td>
    <td style="text-align:left;"> 9 </td>
    <td style="text-align:left;"> 91 </td>
    <td style="text-align:left;"> 5 </td>
@@ -196,7 +211,10 @@ These are for people after exclusions.
 # Get data on invite dates and Ns
 invites <- read_csv(here("Data", "invites.csv")) %>%
   rename(Game = game) %>%
-  mutate(Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"))
+  mutate(
+    Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"),
+    Game = str_replace(Game, "Gran Turismo Sport", "GT Sport")
+    )
 # Create a table where wave 0 are number of invites,
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
@@ -253,9 +271,9 @@ bind_rows(
   <tr>
    <td style="text-align:left;"> EVE Online </td>
    <td style="text-align:left;"> 30,000 </td>
-   <td style="text-align:left;"> 0 (NA) </td>
-   <td style="text-align:left;"> 0 (NA) </td>
-   <td style="text-align:left;"> 0 (NA) </td>
+   <td style="text-align:left;"> 899 (3.00%) </td>
+   <td style="text-align:left;"> 240 (26.70%) </td>
+   <td style="text-align:left;"> 221 (92.08%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Forza Horizon 4 </td>
@@ -265,7 +283,7 @@ bind_rows(
    <td style="text-align:left;"> 597 (77.33%) </td>
   </tr>
   <tr>
-   <td style="text-align:left;"> Gran Turismo Sport </td>
+   <td style="text-align:left;"> GT Sport </td>
    <td style="text-align:left;"> 1,729,677 </td>
    <td style="text-align:left;"> 19,073 (1.10%) </td>
    <td style="text-align:left;"> 7,699 (40.37%) </td>
@@ -305,7 +323,7 @@ d %>%
   geom_col() +
   scale_y_continuous(
     "Responses",
-    breaks = pretty_breaks(10),
+    breaks = pretty_breaks(),
     expand = expansion(c(0, .1)),
   ) +
   scale_x_date(
@@ -331,7 +349,7 @@ d %>%
   ggplot(aes(Hour, y = n, fill = Wave)) +
   scale_y_continuous(
     "Responses",
-    breaks = pretty_breaks(10),
+    breaks = pretty_breaks(),
     expand = expansion(c(0, .1)),
   ) +
   scale_x_continuous(
@@ -389,11 +407,11 @@ d %>%
 <tbody>
   <tr>
    <td style="text-align:right;"> 0.001 </td>
-   <td style="text-align:right;"> 11.61 </td>
-   <td style="text-align:right;"> 13.694 </td>
-   <td style="text-align:right;"> 14.037 </td>
-   <td style="text-align:right;"> 15.927 </td>
-   <td style="text-align:right;"> 17.101 </td>
+   <td style="text-align:right;"> 11.649 </td>
+   <td style="text-align:right;"> 13.706 </td>
+   <td style="text-align:right;"> 14.046 </td>
+   <td style="text-align:right;"> 15.941 </td>
+   <td style="text-align:right;"> 17.105 </td>
    <td style="text-align:right;"> 49.287 </td>
   </tr>
 </tbody>

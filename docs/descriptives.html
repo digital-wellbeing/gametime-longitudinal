@@ -103,7 +103,11 @@
 
 <span class="co"># Make wave a nicely labelled factor</span>
 <span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Wave <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">wid</span>, levels <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"Wave "</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></code></pre></div>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Wave <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">wid</span>, levels <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html">paste0</a></span><span class="op">(</span><span class="st">"Wave "</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+
+<span class="co"># Rename game to fit titles in plots</span>
+<span class="va">d</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="va">Game</span> <span class="op">==</span> <span class="st">"Gran Turismo Sport"</span>, <span class="st">"GT Sport"</span>, <span class="va">Game</span><span class="op">)</span><span class="op">)</span></code></pre></div>
 <div id="demographics-after-exclusions" class="section level2" number="3.1">
 <h2>
 <span class="header-section-number">3.1</span> Demographics after exclusions<a class="anchor" aria-label="anchor" href="#demographics-after-exclusions"><i class="fas fa-link"></i></a>
@@ -128,7 +132,7 @@
 Characteristic
 </th>
 <th style="text-align:left;">
-Overall, N = 38,030
+Overall, N = 38,935
 </th>
 <th style="text-align:left;">
 AC:NH, N = 13,646
@@ -137,10 +141,13 @@ AC:NH, N = 13,646
 Apex Legends, N = 1,158
 </th>
 <th style="text-align:left;">
+EVE Online, N = 905
+</th>
+<th style="text-align:left;">
 Forza Horizon 4, N = 1,981
 </th>
 <th style="text-align:left;">
-Gran Turismo Sport, N = 19,258
+GT Sport, N = 19,258
 </th>
 <th style="text-align:left;">
 Outriders, N = 1,530
@@ -155,13 +162,16 @@ The Crew 2, N = 457
 Age
 </td>
 <td style="text-align:left;">
-33 (25, 42)
+34 (25, 42)
 </td>
 <td style="text-align:left;">
 32 (25, 41)
 </td>
 <td style="text-align:left;">
 25 (20, 32)
+</td>
+<td style="text-align:left;">
+39 (31, 50)
 </td>
 <td style="text-align:left;">
 33 (24, 42)
@@ -181,13 +191,16 @@ Age
 Missing
 </td>
 <td style="text-align:left;">
-79
+82
 </td>
 <td style="text-align:left;">
 29
 </td>
 <td style="text-align:left;">
 5
+</td>
+<td style="text-align:left;">
+3
 </td>
 <td style="text-align:left;">
 6
@@ -220,19 +233,24 @@ Gender
 </td>
 <td style="text-align:left;">
 </td>
+<td style="text-align:left;">
+</td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 Man
 </td>
 <td style="text-align:left;">
-28,912 (76%)
+29,765 (77%)
 </td>
 <td style="text-align:left;">
 5,451 (40%)
 </td>
 <td style="text-align:left;">
 1,002 (87%)
+</td>
+<td style="text-align:left;">
+853 (95%)
 </td>
 <td style="text-align:left;">
 1,884 (95%)
@@ -252,13 +270,16 @@ Man
 Non-binary / third gender
 </td>
 <td style="text-align:left;">
-698 (1.8%)
+705 (1.8%)
 </td>
 <td style="text-align:left;">
 557 (4.1%)
 </td>
 <td style="text-align:left;">
 25 (2.2%)
+</td>
+<td style="text-align:left;">
+7 (0.8%)
 </td>
 <td style="text-align:left;">
 11 (0.6%)
@@ -278,13 +299,16 @@ Non-binary / third gender
 Prefer not to say
 </td>
 <td style="text-align:left;">
-353 (0.9%)
+363 (0.9%)
 </td>
 <td style="text-align:left;">
 183 (1.3%)
 </td>
 <td style="text-align:left;">
 17 (1.5%)
+</td>
+<td style="text-align:left;">
+10 (1.1%)
 </td>
 <td style="text-align:left;">
 12 (0.6%)
@@ -304,13 +328,16 @@ Prefer not to say
 Woman
 </td>
 <td style="text-align:left;">
-7,985 (21%)
+8,017 (21%)
 </td>
 <td style="text-align:left;">
 7,426 (55%)
 </td>
 <td style="text-align:left;">
 109 (9.5%)
+</td>
+<td style="text-align:left;">
+32 (3.5%)
 </td>
 <td style="text-align:left;">
 68 (3.4%)
@@ -330,13 +357,16 @@ Woman
 Missing
 </td>
 <td style="text-align:left;">
-82
+85
 </td>
 <td style="text-align:left;">
 29
 </td>
 <td style="text-align:left;">
 5
+</td>
+<td style="text-align:left;">
+3
 </td>
 <td style="text-align:left;">
 6
@@ -356,13 +386,16 @@ Missing
 Experience
 </td>
 <td style="text-align:left;">
-23 (15, 30)
+23 (16, 30)
 </td>
 <td style="text-align:left;">
 22 (15, 30)
 </td>
 <td style="text-align:left;">
 17 (10, 25)
+</td>
+<td style="text-align:left;">
+25 (20, 32)
 </td>
 <td style="text-align:left;">
 23 (15, 30)
@@ -382,13 +415,16 @@ Experience
 Missing
 </td>
 <td style="text-align:left;">
-176
+181
 </td>
 <td style="text-align:left;">
 62
 </td>
 <td style="text-align:left;">
 8
+</td>
+<td style="text-align:left;">
+5
 </td>
 <td style="text-align:left;">
 9
@@ -424,7 +460,10 @@ Missing
 <code class="sourceCode R"><span class="co"># Get data on invite dates and Ns</span>
 <span class="va">invites</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"invites.csv"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">rename</span><span class="op">(</span>Game <span class="op">=</span> <span class="va">game</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="fu">str_replace</span><span class="op">(</span><span class="va">Game</span>, <span class="st">"Animal Crossing: New Horizons"</span>, <span class="st">"AC:NH"</span><span class="op">)</span><span class="op">)</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    Game <span class="op">=</span> <span class="fu">str_replace</span><span class="op">(</span><span class="va">Game</span>, <span class="st">"Animal Crossing: New Horizons"</span>, <span class="st">"AC:NH"</span><span class="op">)</span>,
+    Game <span class="op">=</span> <span class="fu">str_replace</span><span class="op">(</span><span class="va">Game</span>, <span class="st">"Gran Turismo Sport"</span>, <span class="st">"GT Sport"</span><span class="op">)</span>
+    <span class="op">)</span>
 <span class="co"># Create a table where wave 0 are number of invites,</span>
 <span class="co"># then calculate response rate / retention at each wave.</span>
 <span class="co"># This assumes there are no new participants at wave 3</span>
@@ -514,13 +553,13 @@ EVE Online
 30,000
 </td>
 <td style="text-align:left;">
-0 (NA)
+899 (3.00%)
 </td>
 <td style="text-align:left;">
-0 (NA)
+240 (26.70%)
 </td>
 <td style="text-align:left;">
-0 (NA)
+221 (92.08%)
 </td>
 </tr>
 <tr>
@@ -542,7 +581,7 @@ Forza Horizon 4
 </tr>
 <tr>
 <td style="text-align:left;">
-Gran Turismo Sport
+GT Sport
 </td>
 <td style="text-align:left;">
 1,729,677
@@ -611,7 +650,7 @@ The Crew 2
   <span class="fu">geom_col</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu">scale_y_continuous</span><span class="op">(</span>
     <span class="st">"Responses"</span>,
-    breaks <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/breaks_pretty.html">pretty_breaks</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span>,
+    breaks <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/breaks_pretty.html">pretty_breaks</a></span><span class="op">(</span><span class="op">)</span>,
     expand <span class="op">=</span> <span class="fu">expansion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.1</span><span class="op">)</span><span class="op">)</span>,
   <span class="op">)</span> <span class="op">+</span>
   <span class="fu">scale_x_date</span><span class="op">(</span>
@@ -634,7 +673,7 @@ Figure 3.1: Histograms of response dates.
   <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span><span class="va">Hour</span>, y <span class="op">=</span> <span class="va">n</span>, fill <span class="op">=</span> <span class="va">Wave</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
   <span class="fu">scale_y_continuous</span><span class="op">(</span>
     <span class="st">"Responses"</span>,
-    breaks <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/breaks_pretty.html">pretty_breaks</a></span><span class="op">(</span><span class="fl">10</span><span class="op">)</span>,
+    breaks <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/breaks_pretty.html">pretty_breaks</a></span><span class="op">(</span><span class="op">)</span>,
     expand <span class="op">=</span> <span class="fu">expansion</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">.1</span><span class="op">)</span><span class="op">)</span>,
   <span class="op">)</span> <span class="op">+</span>
   <span class="fu">scale_x_continuous</span><span class="op">(</span>
@@ -705,19 +744,19 @@ Figure 3.2: Histograms of response times (in UTC).
 0.001
 </td>
 <td style="text-align:right;">
-11.61
+11.649
 </td>
 <td style="text-align:right;">
-13.694
+13.706
 </td>
 <td style="text-align:right;">
-14.037
+14.046
 </td>
 <td style="text-align:right;">
-15.927
+15.941
 </td>
 <td style="text-align:right;">
-17.101
+17.105
 </td>
 <td style="text-align:right;">
 49.287
