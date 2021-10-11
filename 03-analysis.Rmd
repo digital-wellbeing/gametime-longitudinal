@@ -530,22 +530,24 @@ pars_riclpm <- pars_riclpm_sep %>%
   ) %>%
   mutate(Game = fct_relevel(Game, "Average")) %>%
   select(-c(lhs:label, z))
+
 # Interactive table so reader can find what they're looking for
 pars_riclpm %>% 
-  select(
-    x_var, y_var, Game, Parameter, Type, Model,
-    est, ci.lower, ci.upper, pvalue
-  ) %>% 
   mutate(
     pvalue = pvalue(pvalue),
     across(x_var:Game, factor),
-    across(where(is.numeric), ~round(.x, 4))
+    across(where(is.numeric), ~format(round(.x, 2), nsmall = 2)),
+    Estimate = str_glue("{est} [{ci.lower}, {ci.upper}]")
+  ) %>% 
+  select(
+    x_var, y_var, Game, Parameter, Type, Model,
+    Estimate, pvalue
   ) %>% 
   datatable(
     filter = "top",
-    class = "display"
+    class = "display",
+    rownames = FALSE
   ) %>% 
-  formatRound(c("est", "ci.lower", "ci.upper"), 2) %>% 
   formatStyle(TRUE, `font-size` = '12px')
 ```
 
@@ -655,13 +657,15 @@ ma_pars %>%
   mutate(
     pd = percent(pd, .1),
     across(x_var:Game, factor),
-    across(where(is.numeric), ~round(.x, 5))
+    across(where(is.numeric), ~format(round(.x, 2), nsmall = 2)),
+    Estimate = str_glue("{Mean} [{CI_low}, {CI_high}]")
   ) %>% 
+  select(x_var:Game, Estimate, pd) %>% 
   datatable(
     filter = "top",
-    class = "display"
+    class = "display",
+    rownames = FALSE
   ) %>% 
-  formatRound(c("Mean", "CI_low", "CI_high"), 2) %>% 
   formatStyle(TRUE, `font-size` = '12px')
 ```
 
