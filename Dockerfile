@@ -11,7 +11,13 @@ RUN apt-get update \
     libfontconfig1-dev \
     libxt6 \
     libcairo2-dev \
-    libv8-dev
+    libv8-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libfreetype6-dev \
+    libpng-dev \
+    libtiff5-dev \
+    libjpeg-dev
 
 ## RENV
 ## Restore packages and install cmdstan
