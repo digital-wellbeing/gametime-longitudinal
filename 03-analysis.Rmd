@@ -75,6 +75,10 @@ if (file.exists(data_path)) {
 # Make wave a nicely labelled factor
 d <- d %>%
   mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
+
+# Rename game to fit titles in plots
+d <- d %>% 
+  mutate(Game = if_else(Game == "Gran Turismo Sport", "GT Sport", Game))
 ```
 
 For all analyses, game time indicates average number of hours per day. The telemetry indicates total hours in the two week window, so we divide that by 14 to talk about average hours per day.
@@ -101,7 +105,7 @@ d %>%
 ```
 
 ```{r variables-over-time}
-#| fig.height: 8
+#| fig.height: 7
 #| fig.cap: >
 #|  Density plots of key variables over time.
 
@@ -282,7 +286,7 @@ d_riclpm_wide <- d_riclpm_long %>%
 ### Cross-lagged scatterplots
 
 ```{r riclpm-crosslag-scatter-hours}
-#| fig.height: 5.5
+#| fig.height: 5
 #| fig.cap: >
 #|  Scatterplots of well-being (rows indicate variables and waves) on average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
@@ -338,7 +342,7 @@ d_riclpm_plots %>%
 ```
 
 ```{r riclpm-crosslag-scatter-hours-estimated}
-#| fig.height: 5.5
+#| fig.height: 5
 #| fig.cap: >
 #|  Scatterplots of well-being (rows indicate variables and waves) on estimated average hours played per day during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
@@ -353,7 +357,7 @@ p_tmp_0
 ```
 
 ```{r riclpm-crosslag-scatter-intrinsic}
-#| fig.height: 5.5
+#| fig.height: 5
 #| fig.cap: >
 #|  Scatterplots of well-being (rows indicate variables and waves) on intrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
@@ -367,7 +371,7 @@ p_tmp_1
 ```
 
 ```{r riclpm-crosslag-scatter-extrinsic}
-#| fig.height: 5.5
+#| fig.height: 5
 #| fig.cap: >
 #|  Scatterplots of well-being (rows indicate variables and waves) on extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
@@ -381,7 +385,7 @@ p_tmp_2
 ```
 
 ```{r riclpm-crosslag-scatter-motivations}
-#| fig.height: 10
+#| fig.height: 9
 #| fig.cap: >
 #|  Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 

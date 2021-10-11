@@ -322,6 +322,13 @@ t_al <- t_al %>%
     Game = "Apex Legends"
   )
 
+# Eve
+t_eo <- read_csv(here("Data", "telemetry-eve-online.csv.gz"))
+t_eo <- t_eo %>% 
+  mutate(
+    Game = "EVE Online"
+  )
+
 # Forza Horizon 4
 t_fh <- read_csv(here("Data", "telemetry-forza-horizon-4.csv.gz"))
 t_fh <- t_fh %>%
@@ -360,7 +367,7 @@ Merge games tables to one table
 ```{r data-telemetry-merge}
 # Merge games' telemetry to one table
 d_t <- bind_rows(
-  t_acnh, t_al, t_fh, t_gts, t_or, t_tc2
+  t_acnh, t_al, t_eo, t_fh, t_gts, t_or, t_tc2
 )
 ```
 

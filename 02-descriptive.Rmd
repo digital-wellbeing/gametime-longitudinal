@@ -47,6 +47,10 @@ if (file.exists(data_path)) {
 # Make wave a nicely labelled factor
 d <- d %>%
   mutate(Wave = factor(wid, levels = 1:3, labels = paste0("Wave ", 1:3)))
+
+# Rename game to fit titles in plots
+d <- d %>% 
+  mutate(Game = if_else(Game == "Gran Turismo Sport", "GT Sport", Game))
 ```
 
 ## Demographics after exclusions
@@ -74,7 +78,10 @@ These are for people after exclusions.
 # Get data on invite dates and Ns
 invites <- read_csv(here("Data", "invites.csv")) %>%
   rename(Game = game) %>%
-  mutate(Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"))
+  mutate(
+    Game = str_replace(Game, "Animal Crossing: New Horizons", "AC:NH"),
+    Game = str_replace(Game, "Gran Turismo Sport", "GT Sport")
+    )
 # Create a table where wave 0 are number of invites,
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
@@ -121,7 +128,7 @@ d %>%
   geom_col() +
   scale_y_continuous(
     "Responses",
-    breaks = pretty_breaks(10),
+    breaks = pretty_breaks(),
     expand = expansion(c(0, .1)),
   ) +
   scale_x_date(
@@ -144,7 +151,7 @@ d %>%
   ggplot(aes(Hour, y = n, fill = Wave)) +
   scale_y_continuous(
     "Responses",
-    breaks = pretty_breaks(10),
+    breaks = pretty_breaks(),
     expand = expansion(c(0, .1)),
   ) +
   scale_x_continuous(
