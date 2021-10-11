@@ -1,10 +1,10 @@
 # Longitudinal study of game play and well-being
 
-This repository ([GitHub](https://osf.io/fb38n/) / [OSF](https://osf.io/fb38n/)) contains the data and code required to reproduce all analyses reported in our manuscript, *Time spent playing video games is unlikely to impact well-being* (Vuorre, Johannes, Magnusson, & Przybylski, 2021). These analyses are presented in the [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal).
+This repository ([GitHub](https://github.com/digital-wellbeing/gametime-longitudinal) / [OSF](https://osf.io/fb38n/)) contains the data and code required to reproduce all analyses reported in our manuscript, *Time spent playing video games is unlikely to impact well-being* (Vuorre, Johannes, Magnusson, & Przybylski, 2021). These analyses are presented in the [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal).
 
 ## Materials
 
-- [Preprint](todo)  
+- [Preprint](https://psyarxiv.com/8cxyh)  
   - A publicly available version of our manuscript in advance of peer-review and formal publication
 - [GitHub repository](https://github.com/digital-wellbeing/gametime-longitudinal)  
   - A version controlled repository containing all the raw data and code in this project
