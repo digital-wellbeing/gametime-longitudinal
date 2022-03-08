@@ -98,6 +98,53 @@ tmp %>%
   save_as_docx(path = "Retention-rates.docx")
 ```
 
+### Differences
+
+We then looked at differences between people who dropped out vs who did not.
+
+```{r}
+tmp <- d %>% 
+  replace_na(list(Responded = FALSE)) %>%
+  group_by(Game, pid) %>% 
+  summarise(
+    across(
+      c(Affect, `Life satisfaction`, 
+        Intrinsic, Extrinsic, 
+        Age, Experience, Hours),
+      mean, na.rm = TRUE
+    ),
+    dropped = factor(
+      sum(Responded) != 3, 
+      levels = c(FALSE, TRUE), 
+      labels = c("No", "Yes")
+    )
+  )
+tmp <- ungroup(tmp)
+tmp <- tmp %>% 
+  pivot_longer(Affect:Hours)
+tmp %>%   
+  ggplot(aes(dropped, value)) +
+  stat_summary() +
+  stat_summary(fun = mean, geom = "line", group = 1) +
+  facet_grid(name~Game, scales = "free_y", margins = "Game")
+library(lme4)
+library(broom.mixed)
+out <- tmp %>% 
+  group_by(name) %>% 
+  summarise(
+    fit = list(
+      lmer(value ~ dropped + (1 + dropped | Game), data = cur_data())
+    )
+  )
+out %>% 
+  mutate(
+    out = map(fit, ~tidy(.x, "fixed"))
+  ) %>% 
+  select(-fit) %>% 
+  unnest(out)
+```
+
+
 ### Response dates
 
 Only for actual responses (not rows where survey date was filled to be able to join telemetry)
