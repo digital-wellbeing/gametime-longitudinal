@@ -281,6 +281,7 @@ d_riclpm_long <- d %>%
   )
 d_riclpm_wide <- d_riclpm_long %>%
   pivot_wider(names_from = wid, values_from = c(x, y), names_sep = "")
+write_rds(d_riclpm_wide, here("Temp", "d_riclpm_wide.rds"))
 ```
 
 ### Cross-lagged scatterplots
