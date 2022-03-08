@@ -85,7 +85,8 @@ mice_mnar_delta <- function(data, delta = 0, m = 5) {
   method[names(method) %in% c("x1", "x2", "x3")] <- ""
 
   # delta adjustment
-  cmd <- paste("imp[[j]][,i] <- imp[[j]][,i] +", delta)
+  # squeeze to scale range
+  cmd <- paste("imp[[j]][,i] <- squeeze(imp[[j]][,i] +", delta, ", c(-6, 6))")
   post[c("y1", "y2", "y3")] <- cmd
 
   imp <- mice(
