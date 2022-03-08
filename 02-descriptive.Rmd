@@ -9,6 +9,7 @@ Load the required packages.
 library(knitr)
 library(scales)
 library(gtsummary)
+library(flextable)
 library(kableExtra)
 library(here)
 library(showtext)
@@ -86,14 +87,14 @@ invites <- read_csv(here("Data", "invites.csv")) %>%
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
 # (people who didn't participate in wave 2 showed up at wave 3).
-bind_rows(
+tmp <- bind_rows(
   select(invites, -date),
   d %>% filter(Responded) %>% count(Game, wid)
 ) %>%
   arrange(Game, wid) %>%
   group_by(Game) %>%
   mutate(
-    R_rate = percent(n / lag(n), .01),
+    R_rate = percent(n / lag(n), .1),
     n = comma(n)
   ) %>%
   pivot_wider(names_from = wid, values_from = c(n, R_rate)) %>%
@@ -104,9 +105,15 @@ bind_rows(
     `Wave 3` = str_glue("{n_3} ({R_rate_3})")
   ) %>%
   select(Game, Invites:`Wave 3`) %>%
-  mutate(across(everything(), ~ str_replace(., "NA", "0"))) %>%
+  mutate(across(everything(), ~ str_replace(., "NA", "0")))
+tmp %>%   
   kbl(caption = "Number of people (response/retention rate) participating at each wave.") %>% 
   kable_styling(full_width = FALSE, font_size = 12)
+# Also save this table for MS
+tmp %>% 
+  ungroup() %>% 
+  flextable() %>% 
+  save_as_docx(path = "Retention-rates.docx")
 ```
 
 ### Response dates
