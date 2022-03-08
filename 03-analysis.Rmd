@@ -585,14 +585,13 @@ if (file.exists(file_path)) {
   fit_ma <- read_rds(file = file_path)
 } else {
   # Compile meta-analytic brms/Stan model
-  bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+  bf_ma <- bf(est | se(se) ~ 1 + (1 | Game))
   fit_ma_empty <- brm(
     bf_ma,
     data = d_ma,
-    prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
-      prior(normal(0, 0.5), class = "b"),
+    prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game"),
     chains = 0,
-    control = list(adapt_delta = .999)
+    control = list(adapt_delta = .99999, max_treedepth = 15)
   )
   # Fit meta-analyses by updating the compiled model.
   cluster_library(cluster, c("brms", "dplyr"))
@@ -605,8 +604,8 @@ if (file.exists(file_path)) {
         update(
           fit_ma_empty,
           newdata = cur_data(),
-          control = list(adapt_delta = .9999),
-          iter = 10000, warmup = 5000,
+          control = list(adapt_delta = .99999),
+          iter = 15000, warmup = 10000,
           refresh = 0
         )
       )
