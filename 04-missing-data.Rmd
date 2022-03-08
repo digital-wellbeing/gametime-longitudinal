@@ -142,7 +142,8 @@ plot_imputed_slopes(imp2) + labs(title = "Delta = -2")
 
 ## Analysis
 For the analysis step we use the same lavaan model as for the main analysis.
-```{r, include = FALSE}
+```{r}
+#| include: FALSE
 riclpm_constrained <- "
   # Create between components (random intercepts)
   RIx =~ 1*x1 + 1*x2 + 1*x3
@@ -277,7 +278,7 @@ run_MA_imp <- function(data, cluster, brms_empty) {
   res <- lapply(data, run_MA, cluster = cluster, brms_empty = brms_empty)
   res <- do.call(rbind, res)
 
-  all_imps <- res %>% 
+  all_imps <- res %>%
     mutate(out = map(fit, get_ma_post)) %>%
     mutate(
       out2 = map(
@@ -289,8 +290,8 @@ run_MA_imp <- function(data, cluster, brms_empty) {
     select(-fit, -out) %>%
     unnest(out2) %>%
     select(-CI, -starts_with("ROPE")) %>%
-    group_by(Parameter, Game)  %>% 
-    mutate(imp = row_number())  %>% 
+    group_by(Parameter, Game) %>%
+    mutate(imp = row_number()) %>%
     as.data.frame()
 
   pooled <- res %>%
@@ -300,19 +301,19 @@ run_MA_imp <- function(data, cluster, brms_empty) {
     )
   pooled$delta <- as.character(data[[1]]$delta[1])
   # only return posterior summary to save space
-  pooled <- pooled %>% 
-  mutate(out = map(fit, get_ma_post)) %>%
-  mutate(
-    out2 = map(
-      out,
-      ~ describe_posterior(.x, centrality = "mean", ci = 0.95) %>%
-        rename(Game = Parameter)
-    )
-  ) %>%
-  select(-fit, -out) %>%
-  unnest(out2) %>%
-  select(-CI, -starts_with("ROPE")) %>%
-  as.data.frame()
+  pooled <- pooled %>%
+    mutate(out = map(fit, get_ma_post)) %>%
+    mutate(
+      out2 = map(
+        out,
+        ~ describe_posterior(.x, centrality = "mean", ci = 0.95) %>%
+          rename(Game = Parameter)
+      )
+    ) %>%
+    select(-fit, -out) %>%
+    unnest(out2) %>%
+    select(-CI, -starts_with("ROPE")) %>%
+    as.data.frame()
 
   list("all" = all_imps, "pooled" = pooled)
 }
@@ -370,60 +371,66 @@ if (file.exists(file_path)) {
   fit_ma_imp <- lapply(
     fit_mnar_imp,
     function(data) run_MA_imp(data, cluster, fit_ma_empty)
-  ) 
-  
+  )
+
   rm(cluster)
   write_rds(fit_ma_imp, file = file_path)
 }
 
-pooled <- lapply(fit_ma_imp, function(d) d$pooled) %>%  
+pooled <- lapply(fit_ma_imp, function(d) d$pooled) %>%
   bind_rows() %>%
   mutate(delta = factor(delta))
-all <- lapply(fit_ma_imp, function(d) d$all) %>%  
+all <- lapply(fit_ma_imp, function(d) d$all) %>%
   do.call(rbind, .)
 rm(fit_ma_imp)
 ```
 
 Here we check so that the correct number of imputations were performed.
 ```{r}
-all %>% 
-  group_by(delta, Parameter) %>% 
+all %>%
+  group_by(delta, Parameter) %>%
   summarise(n = n())
 ```
 
 We also take a look at some of the imputed coefficients.
 
 ```{r imputed-coefs}
-
-all %>% 
-  filter(Game == "Intercept", delta == -1)  %>% 
-  mutate(imp = factor(imp))  %>% 
+#| fig.height: 6
+#| fig.cap: >
+#|  Results from the missing data sensivitity analysis. Coefficients plus 95% CIs for each imputation when delta = -1
+all %>%
+  filter(Game == "Intercept", delta == -1) %>%
+  mutate(imp = factor(imp)) %>%
   ggplot(
     aes(Mean, imp)
-    ) +
-    geom_point() +
-    geom_linerange(aes(xmin = CI_low, xmax = CI_high)) +
-    geom_vline(xintercept = 0) +
-    facet_wrap(~Parameter, scales = "free_x")
+  ) +
+  geom_point() +
+  geom_linerange(aes(xmin = CI_low, xmax = CI_high)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~Parameter, scales = "free_x") +
+  labs(x = "Imputation", y = "Estimate")
 ```
 
 ## Sensitivity plot
 We plot all regression coefs, "wy2 ~ wx1" should be the most interesting one. 
-```{r sensitivity-plot, fig.width=10, fig.height=10}
+```{r sensitivity-plot}
+#| fig.width: 10
+#| fig.height: 10
+#| fig.cap: >
+#|  Coefficients plus 95% CIs for the pooled MI models
 pooled %>%
-  mutate(delta = factor(delta, levels = c("-2", "-1", "0", "no MI", "1", "2"))) %>%
+  mutate(
+    delta = factor(
+      delta,
+      levels = c("-2", "-1", "0", "no MI", "1", "2")
+    )
+  ) %>%
   ggplot(
     aes(Mean, delta, color = delta)
   ) +
   geom_point() +
   geom_linerange(aes(xmin = CI_low, xmax = CI_high)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = "Delta adjustment", y = "Estimate") +
   facet_grid(Game ~ Parameter, scales = "free")
 ```
-
-Check so these replicate panel 1 in Figure 4.9
-```{r}
-all %>%
-  filter(delta == "no MI", Parameter == "wy2 ~ wx1") %>%
-  kable(digits = 2, format = "pipe")
-  ```
