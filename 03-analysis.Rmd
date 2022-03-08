@@ -44,22 +44,6 @@ cluster_library(cluster, c("dplyr", "lavaan"))
 # MCMC settings
 options(mc.cores = 1)
 if (require("cmdstanr")) options(brms.backend = "cmdstanr")
-
-# Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
-col1 <- "#2980b9"
-col2 <- "#2980b9"
 ```
 
 We analyse the data cleaned previously.

@@ -26,20 +26,6 @@ And then set options for plots and parallel computations.
 ```{r settings}
 #| cache: FALSE
 
-# Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
-
 # parallel computations
 MAX_CORES <- as.numeric(Sys.getenv("MAX_CORES"))
 if (is.na(MAX_CORES)) MAX_CORES <- parallel::detectCores(logical = FALSE)

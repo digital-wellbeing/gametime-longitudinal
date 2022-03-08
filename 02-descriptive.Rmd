@@ -17,24 +17,6 @@ library(tidyverse)
 library(lubridate)
 ```
 
-Figure options.
-
-```{r settings}
-# Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
-```
-
 We then load the previously cleaned data table.
 
 ```{r data-load}
