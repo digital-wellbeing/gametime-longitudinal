@@ -1,0 +1,388 @@
+---
+title: "MNAR Multiple Imputation using delta adjustment"
+author: "Kristoffer Magnusson"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(cache = TRUE)
+library(lavaan)
+library(brms)
+library(tidyverse)
+library(multidplyr)
+library(here)
+library(knitr)
+library(mice)
+```
+
+Keep only `Affect` and `Hours`.
+
+```{r}
+d_riclpm_wide <- read_rds(here("Data", "d_riclpm_wide.rds"))
+# keep only necessary vars
+d <- filter(d_riclpm_wide, y_var == "Affect", x_var == "Hours")
+```
+
+### MNAR imputation
+We use MICE to impute missing using MNAR delta adjustment. Imputation method is PMM.
+
+
+```{r}
+#' Perform imputation using MICE
+#'
+#' @param data the data
+#' @param delta delta adjustement; a constant that's removed from the MAR imputation
+#' @param m number of imputations
+#'
+#' @return a mice imputation object
+
+mice_mnar_delta <- function(data, delta = 0, m = 5) {
+  d2 <- data[, !names(data) %in% c("pid", "y_var", "x_var")]
+  pred <- make.predictorMatrix(d2)
+  imp0 <- mice(
+    d2,
+    print = FALSE,
+    pred = pred,
+    m = 1
+  )
+
+  # pred <- quickpred(d2, minpuc = 0.33)
+
+  # do not impute hours
+  pred[, "x1"] <- 0
+  pred[, "x2"] <- 0
+  pred[, "x3"] <- 0
+
+  post <- imp0$post
+  method <- imp0$method
+  method[names(method) %in% c("x1", "x2", "x3")] <- ""
+
+  # delta adjustment
+  cmd <- paste("imp[[j]][,i] <- imp[[j]][,i] +", delta)
+  post[c("y1", "y2", "y3")] <- cmd
+
+  imp <- mice(
+    d2,
+    print = FALSE,
+    pred = pred,
+    post = post,
+    method = method,
+    m = m
+  )
+  imp
+}
+```
+
+
+Inspect the imputations. Density plots of observed and imputed values for delta = 0 and -2.
+
+```{r densityplot-imputed}
+imp2 <- mice_mnar_delta(data = d, delta = -2, m = 20)
+imp_mar <- mice_mnar_delta(data = d, delta = 0, m = 20)
+densityplot(imp_mar, ~ y1 + y2 + y3)
+densityplot(imp2, ~ y1 + y2 + y3)
+```
+
+Let's compare the imputed slopes for 15 participants, asuming delta 0 or -2
+```{r slopes-animation, fig.show="animate", aniopts="controls,loop"}
+#' Plot the slopes for 15 participants and the imputations
+plot_imputed_slopes <- function(imp) {
+  tmp <- mice::complete(imp, action = "all")
+  n_subs <- 15
+  tmp2 <- lapply(tmp, function(d) head(d, n = n_subs))
+  tmp2 <- bind_rows(tmp2, .id = "imp")
+  tmp2$id <- rep(1:n_subs, 20)
+
+  tmp3 <- pivot_longer(
+    tmp2,
+    c(y1, y2, y3),
+    names_to = "y_var", values_to = "y"
+  )
+  tmp3_sum <- tmp3 %>%
+    group_by(id, y_var) %>%
+    summarise(y = mean(y))
+  ggplot(tmp3, aes(y_var, y, group = interaction(id, imp))) +
+    geom_line(alpha = .5) +
+    geom_line(data = tmp3_sum, aes(group = id), color = "blue", size = 1.5) +
+    facet_wrap(~id) +
+    ylim(c(-6, 6))
+}
+
+plot_imputed_slopes(imp_mar) + labs(title = "Delta = 0")
+plot_imputed_slopes(imp2) + labs(title = "Delta = -2")
+```
+
+The lavaan model
+```{r, include = FALSE}
+riclpm_constrained <- "
+  # Create between components (random intercepts)
+  RIx =~ 1*x1 + 1*x2 + 1*x3
+  RIy =~ 1*y1 + 1*y2 + 1*y3
+
+  # Create within-person centered variables
+  wx1 =~ 1*x1
+  wx2 =~ 1*x2
+  wx3 =~ 1*x3
+  wy1 =~ 1*y1
+  wy2 =~ 1*y2
+  wy3 =~ 1*y3
+
+  # Estimate the lagged effects between the within-person centered variables (constrained).
+  wx2 ~ bx*wx1 + gx*wy1
+  wy2 ~ gy*wx1 + by*wy1
+  wx3 ~ bx*wx2 + gx*wy2
+  wy3 ~ gy*wx2 + by*wy2
+
+  # Estimate the covariance between the within-person centered
+  # variables at the first wave.
+  wx1 ~~ wy1 # Covariance
+
+  # Estimate the covariances between the residuals of the
+  # within-person centered variables (the innovations).
+  wx2 ~~ wy2
+  wx3 ~~ wy3
+
+  # Estimate the variance and covariance of the random intercepts.
+  RIx ~~ RIx
+  RIy ~~ RIy
+  RIx ~~ RIy
+
+  # Estimate the (residual) variance of the within-person centered variables.
+  wx1 ~~ wx1 # Variances
+  wy1 ~~ wy1
+  wx2 ~~ wx2 # Residual variances
+  wy2 ~~ wy2
+  wx3 ~~ wx3
+  wy3 ~~ wy3
+"
+```
+
+Fit the lavaan model to each imputed data set.
+
+```{r}
+get_lavaan_pars <- function(x) {
+  bind_rows(
+    parameterestimates(x) %>%
+      mutate(Type = "Unstandardized"),
+    standardizedsolution(x) %>%
+      rename(est = est.std) %>%
+      mutate(Type = "Standardized")
+  ) %>%
+    as_tibble() %>%
+    unite("Parameter", c(lhs, op, rhs), sep = " ", remove = FALSE) %>%
+    filter(Type == "Unstandardized", str_detect(Parameter, " ~ ")) %>%
+    filter(Parameter %in% c("wx2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wy2 ~ wx1"))
+}
+
+lavaan_mice_mnar <- function(data, delta = 0, m = 5) {
+  # use observed data only if m = 0
+  if (m > 0) {
+    imp <- mice_mnar_delta(data = data, delta = delta, m = m)
+  } else {
+    imp <- list(m = c(1))
+  }
+
+  # fit model to each imputed dataset
+  fit_multi_imp <- lapply(seq_len(imp$m), function(i) {
+    if (m > 0) {
+      d_tmp <- mice::complete(data = imp, action = i, include = FALSE)
+    } else {
+      d_tmp <- data
+    }
+    fit_riclpm_sep <- d_tmp %>%
+      group_by(Game) %>%
+      summarise(
+        fit = lavaan(
+          riclpm_constrained,
+          data = cur_data(),
+          missing = "ml",
+          meanstructure = TRUE,
+          int.ov.free = TRUE
+        ) %>% list()
+      )
+    out <- fit_riclpm_sep %>%
+      mutate(pars = map(fit, get_lavaan_pars)) %>%
+      select(-fit) %>%
+      ungroup() %>%
+      unnest(pars)
+    out$imp <- i
+    out$delta <- delta
+    out
+  })
+  fit_multi_imp
+}
+```
+
+Meta-analyze everything
+```{r include=FALSE}
+# fit model without MI
+fit_no_mi <- lavaan_mice_mnar(data = d, delta = "no MI", m = 0)
+# different delta values
+deltas <- c(0, -1, -2)
+fit_mnar_imp <- lapply(
+  deltas,
+  function(delta) lavaan_mice_mnar(data = d, delta = delta, m = 20)
+)
+
+fit_mnar_imp <- c(list(fit_no_mi), fit_mnar_imp)
+
+# Meta-analyze the models fitted independently to games
+d_ma <- fit_mnar_imp[[1]][[1]]
+
+# Compile meta-analytic brms/Stan model
+bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+fit_ma_empty <- brm(
+  bf_ma,
+  data = d_ma,
+  prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
+    prior(normal(0, 0.5), class = "b"),
+  chains = 0,
+  control = list(adapt_delta = .999)
+)
+
+cluster <- new_cluster(4)
+cluster_library(cluster, c("dplyr", "brms", "here", "stringr"))
+cluster_copy(cluster, "fit_ma_empty")
+
+run_MA <- function(data, cluster, brms_empty) {
+  fit_ma <- data %>%
+    group_by(Parameter) %>%
+    mutate(i = cur_group_id()) %>%
+    partition(cluster) %>%
+    summarise(
+      fit = list(
+        update(
+          brms_empty,
+          newdata = cur_data(),
+          control = list(adapt_delta = .9999, max_treedepth = 15),
+          # iter = 15000, warmup = 5000,
+          iter = 2000, warmup = 1000,
+          refresh = 0,
+        )
+      )
+    ) %>%
+    collect()
+  fit_ma$delta <- data$delta[1]
+  fit_ma
+}
+```
+
+We perform the meta-analysis for each delta value and for the M (imputed) lavaan models.
+
+```{r}
+#' Run MA with MICE lavaan objects
+#'
+#' @param data a list with results from the m imputations
+run_MA_imp <- function(data, cluster, brms_empty) {
+  out <- lapply(data, run_MA, cluster = cluster, brms_empty = brms_empty)
+
+  do.call(rbind, out)
+}
+
+fit_ma_imp <- lapply(
+  fit_mnar_imp,
+  function(data) run_MA_imp(data, cluster, fit_ma_empty)
+)
+```
+
+Check so that the correct number of imputations were performed.
+```{r}
+lapply(fit_ma_imp, nrow)
+```
+
+We also take a look at some of the imputed models.
+
+```{r imputed-coefs}
+#' Get all imputed coefs for 1 delta value
+#'
+#' Only used to check if the code works
+get_all_imp_coefs <- function(imp_coefs) {
+  lapply(unique(imp_coefs$Parameter), function(p) {
+    x <- imp_coefs[imp_coefs$Parameter == p, ]
+    res <- lapply(x$fit, function(d) {
+      as.data.frame(fixef(d))
+    }) %>% do.call(rbind, .)
+    res$imp <- 1:nrow(res)
+    res$Parameter <- p
+    res
+  }) %>% do.call(rbind, .)
+}
+
+all_coefs <- get_all_imp_coefs(fit_ma_imp[[2]])
+
+ggplot(
+  data = all_coefs,
+  aes(Estimate, imp)
+) +
+  geom_point() +
+  geom_linerange(aes(xmin = Q2.5, xmax = Q97.5)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~Parameter, scales = "free_x")
+```
+
+We pool the imputed models into one using `brms::combine_models`
+```{r}
+# Pool the imputations for all deltas
+tmp <- lapply(seq_along(fit_ma_imp), function(i) {
+  res <- fit_ma_imp[[i]] %>%
+    group_by(Parameter) %>%
+    summarise(
+      fit = combine_models(mlist = fit, check_data = FALSE) %>% list()
+    )
+  res$delta <- as.character(fit_ma_imp[[i]]$delta[1])
+  res
+}) %>%
+  bind_rows() %>%
+  mutate(delta = factor(delta))
+tmp
+```
+
+
+```{r}
+# get posterior summaries
+get_ma_post <- function(x) {
+  coef(x, summary = FALSE) %>%
+    .[["Game"]] %>%
+    .[, , 1] %>%
+    as.data.frame() %>%
+    cbind(fixef(x, summary = FALSE)) %>%
+    as_tibble()
+}
+all <- tmp %>%
+  group_by(delta) %>%
+  mutate(out = map(fit, get_ma_post)) %>%
+  mutate(
+    out2 = map(
+      out,
+      ~ describe_posterior(.x, centrality = "mean", ci = 0.95) %>%
+        rename(Game = Parameter)
+    )
+  ) %>%
+  select(-fit, -out) %>%
+  unnest(out2) %>%
+  select(-CI, -starts_with("ROPE")) %>%
+  as.data.frame()
+```
+
+## Sensitivity plot
+Plot all regression coefs, "wy2 ~ wx1" should be the most interesting one. 
+```{r sensitivity-plot, fig.width=10, fig.height=10}
+all %>%
+  mutate(delta = factor(delta, levels = c("-2", "-1", "0", "no MI"))) %>%
+  ggplot(
+    aes(Mean, delta, color = delta)
+  ) +
+  geom_point() +
+  geom_linerange(aes(xmin = CI_low, xmax = CI_high)) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  facet_grid(Game ~ Parameter, scales = "free") +
+  theme_grey()
+```
+
+Check so these replicate panel 1 in Figure 4.9
+```{r}
+all %>%
+  filter(delta == "no MI", Parameter == "wy2 ~ wx1") %>%
+  kable(digits = 2, format = "pipe")
+  ```
