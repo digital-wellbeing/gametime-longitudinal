@@ -10,6 +10,8 @@ library(knitr)
 library(scales)
 library(gtsummary)
 library(flextable)
+library(lme4)
+library(broom.mixed)
 library(kableExtra)
 library(here)
 library(showtext)
@@ -95,7 +97,7 @@ tmp %>%
 tmp %>% 
   ungroup() %>% 
   flextable() %>% 
-  save_as_docx(path = "Retention-rates.docx")
+  save_as_docx(path = "Figures/Retention-rates.docx")
 ```
 
 ### Differences
@@ -127,8 +129,6 @@ tmp %>%
   stat_summary() +
   stat_summary(fun = mean, geom = "line", group = 1) +
   facet_grid(name~Game, scales = "free_y", margins = "Game")
-library(lme4)
-library(broom.mixed)
 out <- tmp %>% 
   group_by(name) %>% 
   summarise(
@@ -141,7 +141,15 @@ out %>%
     out = map(fit, ~tidy(.x, "fixed"))
   ) %>% 
   select(-fit) %>% 
-  unnest(out)
+  unnest(out) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(across(where(is.numeric), ~number(., .01))) %>% 
+  transmute(
+    Variable = name,
+    Difference = str_glue("{estimate} ({std.error})")
+  ) %>% 
+  flextable(cwidth = 2) %>% 
+  save_as_docx(path = "Figures/Between-dropout-table.docx")
 ```
 
 
