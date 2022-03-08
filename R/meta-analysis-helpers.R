@@ -106,7 +106,7 @@ forest_plot <- function(object,
     ) +
     # CIs in right margin
     geom_text(
-      vjust = -0.5, size = 3, hjust = 1,
+      vjust = -0.5, size = 2.6, hjust = 1,
       aes(x = x_limits[2], label = Res),
       family = Font
     ) +
