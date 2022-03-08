@@ -15,9 +15,10 @@ knitr::opts_chunk$set(
   fig.retina = 2
 )
 
+# If you've defined a custom font, we will use it in outputs
+Font <- Sys.getenv("FONT")
+
 # Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
 theme_set(
   theme_linedraw(
     base_family = Font,
@@ -25,8 +26,9 @@ theme_set(
   ) +
     theme(
       panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
+      panel.grid.major = element_blank(),
+      axis.text = element_text(size = rel(0.75))
     )
 )
 col1 <- "#2980b9"
-W <- 20  # Figure width in cm
+W <- 17.4  # Figure width in cm

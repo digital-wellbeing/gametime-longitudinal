@@ -15,6 +15,7 @@ library(kableExtra)
 library(ggpp)
 library(bayestestR)
 library(brms)
+library(ragg)
 library(here)
 library(ggtext)
 library(ggstance)
@@ -103,22 +104,14 @@ tmp <- d %>%
   drop_na(value) %>%
   filter(!(name == "Hours" & value > 3)) %>%
   mutate(name = fct_inorder(name))
-
 tmp %>%
   ggplot(
     aes(
       Wave,
-      value,
-      fill = Game,
-      color, Game,
-      group = Game
+      value
     )
   ) +
   scale_x_discrete(labels = 1:3, expand = expansion(c(0.1, .1))) +
-  scale_color_manual(
-    values = c(col1, col2, col1, col2, col1, col2, col1),
-    aesthetics = c("fill", "color", "slab_color")
-  ) +
   scale_y_continuous(
     "Value",
     breaks = pretty_breaks(),
@@ -126,21 +119,11 @@ tmp %>%
   ) +
   geom_blank() +
   stat_halfeye(
-    alpha = .33,
     height = .02,
     normalize = "panels",
-    adjust = 1.1,
-    point_interval = NULL,
-    show.legend = FALSE
-  ) +
-  # only the outline (hackish)
-  stat_halfeye(
-    alpha = 1,
-    height = .02,
-    normalize = "panels",
-    aes(slab_color = Game),
+    slab_color = col1,
+    slab_fill = alpha(col1, 0.3),
     slab_size = 0.5,
-    fill = NA,
     adjust = 1.1,
     point_interval = NULL,
     show.legend = FALSE
@@ -152,13 +135,19 @@ tmp %>%
   stat_summary(
     fun = mean,
     geom = "line",
-    size = .33
+    size = .33,
+    group = 1
   ) +
   facet_grid(name ~ Game, scales = "free_y") +
   theme(
-    legend.position = "none",
-    strip.text.x = element_text(size = 8)
+    legend.position = "none"
   )
+agg_png(
+  "Figures/Fig-variables-over-time.png", 
+  width = W, height = W*0.7, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 Then take a look at a simple model of change over time for each variable. Note that we can't use varying slopes with lmer because there's not enough data, so just random intercepts for players.
@@ -320,9 +309,15 @@ d_riclpm_plots %>%
   ) +
   theme(
     aspect.ratio = 1,
-    panel.grid = element_blank(),
-    strip.text.x = element_text(size = 8)
+    panel.grid = element_blank()
   )
+
+agg_png(
+  "Figures/Fig-cl-scatter-hours.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-hours-estimated}
@@ -352,6 +347,12 @@ p_tmp_1 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_1
+agg_png(
+  "Figures/Fig-cl-scatter-intrinsic.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-extrinsic}
@@ -366,6 +367,12 @@ p_tmp_2 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_2
+agg_png(
+  "Figures/Fig-cl-scatter-extrinsic.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-motivations}
@@ -763,6 +770,12 @@ fp_2 <- forest_plot(
   x_limits = c(-.05, .06)
 )
 (fp_1 + theme(axis.title.x = element_blank())) / fp_2
+agg_png(
+  "Figures/Fig-forest-hours-wb.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r forest-hours-wb-lavaan}
@@ -833,6 +846,13 @@ fp_4 <- forest_plot(
   x_limits = c(-.35, .35)
 )
 fp_1 / fp_3
+
+agg_png(
+  "Figures/Fig-forest-exp-wb.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r forest-motivations-wb-2}
