@@ -39,7 +39,7 @@ d <- filter(d_riclpm_wide, y_var == "Affect", x_var == "Hours")
 
 
 ## Imputation model
-We use `MICE` to impute missing under a missing not a random (MNAR) mechanism using [delta adjustment](https://stefvanbuuren.name/fimd/sec-sensitivity.html). Predictive mean matching (PMM) is used for the actual imputations.
+We use `MICE` to impute a missing not a random (MNAR) mechanism using [delta adjustment](https://stefvanbuuren.name/fimd/sec-sensitivity.html). Predictive mean matching (PMM) is used for the actual imputations.
 
 ```{r}
 #' Perform imputation using MICE
@@ -315,7 +315,6 @@ run_MA <- function(data, cluster, brms_empty) {
           brms_empty,
           newdata = cur_data(),
           control = list(adapt_delta = .9999, max_treedepth = 15),
-          # iter = 15000, warmup = 5000,
           iter = ITER, warmup = WARMUP,
           refresh = 0,
         )
@@ -406,6 +405,9 @@ We plot all regression coefs, "wy2 ~ wx1" should be the most interesting one.
 #| fig.cap: >
 #|  Coefficients plus 95% CIs for the pooled MI models
 pooled %>%
+  tibble() %>% 
+  mutate(Game = if_else(Game == "Intercept", "Average", Game)) %>% 
+  mutate(Game = fct_rev(fct_relevel(Game, "Average"))) %>% 
   mutate(
     delta = factor(
       delta,
