@@ -1,5 +1,4 @@
 # Set global options here
-library(showtext)
 library(ggplot2)
 
 # Global knitr options
