@@ -1,4 +1,3 @@
-
 # Missing data sensitivity analysis
 
 This document contains a missing data sensitivity analysis.
@@ -16,18 +15,6 @@ library(multidplyr)
 library(here)
 library(knitr)
 library(mice)
-Font <- "Titillium Web"
-sysfonts::font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
 
 # mcmc setup
 options(mc.cores = 1)
