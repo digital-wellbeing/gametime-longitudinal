@@ -1,2 +1,3 @@
 source("renv/activate.R")
-source("_common.R")
+if (require(ggplot2)) source("_common.R")
+
