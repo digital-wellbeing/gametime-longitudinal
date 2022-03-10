@@ -402,8 +402,8 @@ all %>%
 ## Sensitivity plot
 We plot all regression coefs, "wy2 ~ wx1" should be the most interesting one. 
 ```{r sensitivity-plot}
-#| fig.width: 10
-#| fig.height: 10
+#| fig.width: 8.5
+#| fig.height: 7
 #| fig.cap: >
 #|  Coefficients plus 95% CIs for the pooled MI models
 pooled %>%
