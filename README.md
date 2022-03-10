@@ -24,6 +24,7 @@ The raw data are in the `Data/` directory of this repository. The code that we u
 To ensure the reproducibility of our analyses, you can use Docker:
 
 Build the Docker image
+
 ```
 docker build \
     --build-arg R_VERSION=4.1.1 \
@@ -31,7 +32,8 @@ docker build \
     -t gametime-longitudinal .
 ```
 
-Run the container and render output
+Run the container and render output. Note you may adjust `MAX_CORES` to use more cores to speed up computations.
+
 ```
 docker run \
     --rm \
