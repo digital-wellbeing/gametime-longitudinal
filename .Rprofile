@@ -1,3 +1,6 @@
 source("renv/activate.R")
-if (interactive()) source("_common.R")
+if (interactive()) {
+  message("Sourcing _common.R")
+  source("_common.R")
+}
 
