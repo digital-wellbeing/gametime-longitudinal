@@ -9,6 +9,7 @@ We first load the required packages.
 knitr::opts_chunk$set(cache = TRUE)
 library(lavaan)
 library(brms)
+library(patchwork)
 library(tidyverse)
 library(bayestestR)
 library(multidplyr)
@@ -98,12 +99,12 @@ densityplot(imp_mar, ~ y1 + y2 + y3)
 densityplot(imp2, ~ y1 + y2 + y3)
 ```
 
-We also compare the imputed slopes for 15 participants, asuming delta 0 or -2.
-```{r slopes-animation, fig.show="animate", aniopts="controls,loop"}
+We also compare the imputed slopes for 14 participants, asuming delta 0 or -2.
+```{r slopes-figure}
 #' Plot the slopes for 15 participants and the imputations
 plot_imputed_slopes <- function(imp) {
   tmp <- mice::complete(imp, action = "all")
-  n_subs <- 15
+  n_subs <- 14
   tmp2 <- lapply(tmp, function(d) head(d, n = n_subs))
   tmp2 <- bind_rows(tmp2, .id = "imp")
   tmp2$id <- rep(1:n_subs, m)
@@ -119,12 +120,13 @@ plot_imputed_slopes <- function(imp) {
   ggplot(tmp3, aes(y_var, y, group = interaction(id, imp))) +
     geom_line(alpha = .5) +
     geom_line(data = tmp3_sum, aes(group = id), color = "blue", size = 1.5) +
-    facet_wrap(~id) +
+    facet_wrap(~id, nrow = 2) +
     ylim(c(-6, 6))
 }
 
-plot_imputed_slopes(imp_mar) + labs(title = "Delta = 0")
-plot_imputed_slopes(imp2) + labs(title = "Delta = -2")
+plot_imputed_slopes(imp_mar) + labs(title = "Delta = 0") +
+  plot_imputed_slopes(imp2) + labs(title = "Delta = -2") +
+  plot_layout(nrow = 2)
 ```
 
 ## Analysis
