@@ -348,12 +348,6 @@ p_tmp_1 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_1
-agg_png(
-  "Figures/Fig-cl-scatter-intrinsic.png", 
-  width = W, height = W*0.6, units = "cm", res = 400
-)
-last_plot()
-dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-extrinsic}
@@ -368,12 +362,6 @@ p_tmp_2 <- last_plot() %+%
     breaks = pretty_breaks()
   )
 p_tmp_2
-agg_png(
-  "Figures/Fig-cl-scatter-extrinsic.png", 
-  width = W, height = W*0.6, units = "cm", res = 400
-)
-last_plot()
-dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-motivations}
@@ -382,6 +370,12 @@ dev.off()
 #|  Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
 p_tmp_1 / p_tmp_2
+agg_png(
+  "Figures/Fig-cl-scatter-motivations.png", 
+  width = W, height = W*1.1, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ### Fit one model to all data
