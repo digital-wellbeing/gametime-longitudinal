@@ -106,7 +106,7 @@ forest_plot <- function(object,
     ) +
     # CIs in right margin
     geom_text(
-      vjust = -0.5, size = 2.6, hjust = 1,
+      vjust = -0.5, size = 2.3, hjust = 1,
       aes(x = x_limits[2], label = Res),
       family = Font
     ) +
@@ -119,7 +119,7 @@ forest_plot <- function(object,
           x_var == {{ x_var }},
           Parameter %in% {{ parameters }}
         ),
-      vjust = 1.4, size = 3,
+      vjust = 1.4, size = 2.3,
       aes(
         x = sign(Mean) * 0,
         hjust = ifelse(sign(Mean) == 1, 0, 1),
