@@ -422,6 +422,6 @@ pooled %>%
   geom_point() +
   geom_linerange(aes(xmin = CI_low, xmax = CI_high)) +
   geom_vline(xintercept = 0, linetype = "dashed") +
-  labs(x = "Delta adjustment", y = "Estimate") +
+  labs(y = "Delta adjustment", x = "Estimate") +
   facet_grid(Game ~ Parameter, scales = "free")
 ```
