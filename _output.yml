@@ -12,9 +12,3 @@ bookdown::bs4_book:
     code_font:
       google:
         family: Fira Code
-bookdown::pdf_book:
-  includes:
-    in_header: preamble.tex
-  latex_engine: xelatex
-  citation_package: natbib
-  keep_tex: yes
