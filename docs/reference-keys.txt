@@ -36,6 +36,8 @@ fig:time-subjective-objective-scatterplot
 fig:time-subjective-objective-differences
 tab:time-subjective-objective-differences
 fig:forest-subjective-wb
+fig:imputed-coefs
+fig:sensitivity-plot
 introduction
 materials
 reproducibility
@@ -61,6 +63,7 @@ descriptives
 demographics-after-exclusions
 survey-descriptives
 response-rate-retention
+differences
 response-dates
 durations-between-waves
 system-information-1
@@ -82,3 +85,7 @@ some-post-hoc-calculations
 subjective-time
 meta-analysis
 system-information-2
+missing-data-sensitivity-analysis
+imputation-model
+analysis
+sensitivity-plot

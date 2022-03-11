@@ -15,13 +15,13 @@ library(kableExtra)
 library(ggpp)
 library(bayestestR)
 library(brms)
+library(ragg)
 library(here)
 library(ggtext)
 library(ggstance)
 library(ggdist)
 library(patchwork)
 library(lavaan)
-library(showtext)
 library(multidplyr)
 library(tidyverse)
 library(tidybayes)
@@ -44,22 +44,6 @@ cluster_library(cluster, c("dplyr", "lavaan"))
 # MCMC settings
 options(mc.cores = 1)
 if (require("cmdstanr")) options(brms.backend = "cmdstanr")
-
-# Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
-col1 <- "#2980b9"
-col2 <- "#2980b9"
 ```
 
 We analyse the data cleaned previously.
@@ -119,22 +103,14 @@ tmp <- d %>%
   drop_na(value) %>%
   filter(!(name == "Hours" & value > 3)) %>%
   mutate(name = fct_inorder(name))
-
 tmp %>%
   ggplot(
     aes(
       Wave,
-      value,
-      fill = Game,
-      color, Game,
-      group = Game
+      value
     )
   ) +
   scale_x_discrete(labels = 1:3, expand = expansion(c(0.1, .1))) +
-  scale_color_manual(
-    values = c(col1, col2, col1, col2, col1, col2, col1),
-    aesthetics = c("fill", "color", "slab_color")
-  ) +
   scale_y_continuous(
     "Value",
     breaks = pretty_breaks(),
@@ -142,21 +118,11 @@ tmp %>%
   ) +
   geom_blank() +
   stat_halfeye(
-    alpha = .33,
     height = .02,
     normalize = "panels",
-    adjust = 1.1,
-    point_interval = NULL,
-    show.legend = FALSE
-  ) +
-  # only the outline (hackish)
-  stat_halfeye(
-    alpha = 1,
-    height = .02,
-    normalize = "panels",
-    aes(slab_color = Game),
+    slab_color = col1,
+    slab_fill = alpha(col1, 0.3),
     slab_size = 0.5,
-    fill = NA,
     adjust = 1.1,
     point_interval = NULL,
     show.legend = FALSE
@@ -168,13 +134,19 @@ tmp %>%
   stat_summary(
     fun = mean,
     geom = "line",
-    size = .33
+    size = .33,
+    group = 1
   ) +
   facet_grid(name ~ Game, scales = "free_y") +
   theme(
-    legend.position = "none",
-    strip.text.x = element_text(size = 8)
+    legend.position = "none"
   )
+agg_png(
+  "Figures/Fig-variables-over-time.png", 
+  width = W, height = W*0.7, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 Then take a look at a simple model of change over time for each variable. Note that we can't use varying slopes with lmer because there's not enough data, so just random intercepts for players.
@@ -281,6 +253,7 @@ d_riclpm_long <- d %>%
   )
 d_riclpm_wide <- d_riclpm_long %>%
   pivot_wider(names_from = wid, values_from = c(x, y), names_sep = "")
+write_rds(d_riclpm_wide, here("Temp", "d_riclpm_wide.rds"))
 ```
 
 ### Cross-lagged scatterplots
@@ -336,9 +309,15 @@ d_riclpm_plots %>%
   ) +
   theme(
     aspect.ratio = 1,
-    panel.grid = element_blank(),
-    strip.text.x = element_text(size = 8)
+    panel.grid = element_blank()
   )
+
+agg_png(
+  "Figures/Fig-cl-scatter-hours.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r riclpm-crosslag-scatter-hours-estimated}
@@ -390,6 +369,12 @@ p_tmp_2
 #|  Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
 p_tmp_1 / p_tmp_2
+agg_png(
+  "Figures/Fig-cl-scatter-motivations.png", 
+  width = W, height = W*1.1, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ### Fit one model to all data
@@ -594,14 +579,13 @@ if (file.exists(file_path)) {
   fit_ma <- read_rds(file = file_path)
 } else {
   # Compile meta-analytic brms/Stan model
-  bf_ma <- bf(est | se(se) ~ 0 + Intercept + (0 + Intercept | Game))
+  bf_ma <- bf(est | se(se) ~ 1 + (1 | Game))
   fit_ma_empty <- brm(
     bf_ma,
     data = d_ma,
-    prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game") +
-      prior(normal(0, 0.5), class = "b"),
+    prior = prior(student_t(7, 0, 0.25), class = "sd", group = "Game"),
     chains = 0,
-    control = list(adapt_delta = .999)
+    control = list(adapt_delta = .99999, max_treedepth = 15)
   )
   # Fit meta-analyses by updating the compiled model.
   cluster_library(cluster, c("brms", "dplyr"))
@@ -614,8 +598,8 @@ if (file.exists(file_path)) {
         update(
           fit_ma_empty,
           newdata = cur_data(),
-          control = list(adapt_delta = .9999),
-          iter = 10000, warmup = 5000,
+          control = list(adapt_delta = .99999),
+          iter = 15000, warmup = 10000,
           refresh = 0
         )
       )
@@ -779,6 +763,12 @@ fp_2 <- forest_plot(
   x_limits = c(-.05, .06)
 )
 (fp_1 + theme(axis.title.x = element_blank())) / fp_2
+agg_png(
+  "Figures/Fig-forest-hours-wb.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r forest-hours-wb-lavaan}
@@ -838,8 +828,7 @@ fp_3 <- forest_plot(
   parameters = c("wy2 ~ wx1"),
   lavaan = FALSE,
   x_limits = c(-.5, .4)
-) +
-  theme(axis.title.x = element_blank())
+)
 fp_4 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",
@@ -849,6 +838,13 @@ fp_4 <- forest_plot(
   x_limits = c(-.35, .35)
 )
 fp_1 / fp_3
+
+agg_png(
+  "Figures/Fig-forest-exp-wb.png", 
+  width = W, height = W*0.6, units = "cm", res = 400
+)
+last_plot()
+dev.off()
 ```
 
 ```{r forest-motivations-wb-2}

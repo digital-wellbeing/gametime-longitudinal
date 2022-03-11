@@ -6,16 +6,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>3 Descriptives | Game play and well-being | Online analysis supplement</title>
 <meta name="author" content="Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski">
-<meta name="description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(kableExtra) library(here) library(showtext) library(tidyverse) library(lubridate) Figure options. # Plotting...">
+<meta name="description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(flextable) library(lme4) library(broom.mixed) library(kableExtra) library(here) library(tidyverse)...">
 <meta name="generator" content="bookdown 0.24 with bs4_book()">
 <meta property="og:title" content="3 Descriptives | Game play and well-being | Online analysis supplement">
 <meta property="og:type" content="book">
 <meta property="og:url" content="https://digital-wellbeing.github.io/gametime-longitudinal/descriptives.html">
 <meta property="og:image" content="https://digital-wellbeing.github.io/gametime-longitudinal/Figures/cover.png">
-<meta property="og:description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(kableExtra) library(here) library(showtext) library(tidyverse) library(lubridate) Figure options. # Plotting...">
+<meta property="og:description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(flextable) library(lme4) library(broom.mixed) library(kableExtra) library(here) library(tidyverse)...">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="3 Descriptives | Game play and well-being | Online analysis supplement">
-<meta name="twitter:description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(kableExtra) library(here) library(showtext) library(tidyverse) library(lubridate) Figure options. # Plotting...">
+<meta name="twitter:description" content="Load the required packages. library(knitr) library(scales) library(gtsummary) library(flextable) library(lme4) library(broom.mixed) library(kableExtra) library(here) library(tidyverse)...">
 <meta name="twitter:image" content="https://digital-wellbeing.github.io/gametime-longitudinal/Figures/cover.png">
 <!-- JS --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://kit.fontawesome.com/6ecbd6c532.js" crossorigin="anonymous"></script><script src="libs/header-attrs-2.11/header-attrs.js"></script><script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="libs/bootstrap-4.6.0/bootstrap.min.css" rel="stylesheet">
@@ -56,6 +56,7 @@
 <li><a class="" href="data-wrangling.html"><span class="header-section-number">2</span> Data wrangling</a></li>
 <li><a class="active" href="descriptives.html"><span class="header-section-number">3</span> Descriptives</a></li>
 <li><a class="" href="main-analysis.html"><span class="header-section-number">4</span> Main analysis</a></li>
+<li><a class="" href="missing-data-sensitivity-analysis.html"><span class="header-section-number">5</span> Missing data sensitivity analysis</a></li>
 </ul>
 
         <div class="book-extra">
@@ -72,28 +73,15 @@
 <code class="sourceCode R"><span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://yihui.org/knitr/">knitr</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://scales.r-lib.org">scales</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ddsjoberg/gtsummary">gtsummary</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://ardata-fr.github.io/flextable-book/">flextable</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/">lme4</a></span><span class="op">)</span>
+<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/bbolker/broom.mixed">broom.mixed</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="http://haozhu233.github.io/kableExtra/">kableExtra</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://here.r-lib.org/">here</a></span><span class="op">)</span>
-<span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/yixuan/showtext">showtext</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyverse.tidyverse.org">tidyverse</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://lubridate.tidyverse.org">lubridate</a></span><span class="op">)</span></code></pre></div>
-<p>Figure options.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span class="co"># Plotting options</span>
-<span class="va">Font</span> <span class="op">&lt;-</span> <span class="st">"Titillium Web"</span>
-<span class="fu">font_add_google</span><span class="op">(</span><span class="va">Font</span>, <span class="va">Font</span><span class="op">)</span>
-<span class="fu">theme_set</span><span class="op">(</span>
-  <span class="fu">theme_linedraw</span><span class="op">(</span>
-    base_family <span class="op">=</span> <span class="va">Font</span>,
-    base_size <span class="op">=</span> <span class="fl">12</span>
-  <span class="op">)</span> <span class="op">+</span>
-    <span class="fu">theme</span><span class="op">(</span>
-      panel.grid.minor <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span>,
-      panel.grid.major.x <span class="op">=</span> <span class="fu">element_blank</span><span class="op">(</span><span class="op">)</span>
-    <span class="op">)</span>
-<span class="op">)</span></code></pre></div>
 <p>We then load the previously cleaned data table.</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">data_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"cleaned_data.rds"</span><span class="op">)</span>
 <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html">file.exists</a></span><span class="op">(</span><span class="va">data_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu">read_rds</span><span class="op">(</span>file <span class="op">=</span> <span class="va">data_path</span><span class="op">)</span>
@@ -112,16 +100,16 @@
 <h2>
 <span class="header-section-number">3.1</span> Demographics after exclusions<a class="anchor" aria-label="anchor" href="#demographics-after-exclusions"><i class="fas fa-link"></i></a>
 </h2>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">d</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">wid</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">distinct</span><span class="op">(</span><span class="va">pid</span>, <span class="va">Game</span>, <span class="va">Age</span>, <span class="va">Experience</span>, <span class="va">Gender</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span>, missing_text <span class="op">=</span> <span class="st">"Missing"</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/bold_italicize_labels_levels.html">bold_labels</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/bold_italicize_labels_levels.html">italicize_levels</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="http://www.danieldsjoberg.com/gtsummary//reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Sample demographics"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://www.danieldsjoberg.com/gtsummary/reference/tbl_summary.html">tbl_summary</a></span><span class="op">(</span>by <span class="op">=</span> <span class="va">Game</span>, missing_text <span class="op">=</span> <span class="st">"Missing"</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://www.danieldsjoberg.com/gtsummary/reference/add_overall.html">add_overall</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://www.danieldsjoberg.com/gtsummary/reference/bold_italicize_labels_levels.html">bold_labels</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://www.danieldsjoberg.com/gtsummary/reference/bold_italicize_labels_levels.html">italicize_levels</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://www.danieldsjoberg.com/gtsummary/reference/as_kable_extra.html">as_kable_extra</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Sample demographics"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
   <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
 <div class="inline-table"><table style="NAborder-bottom: 0; font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;" class="table">
 <caption style="font-size: initial !important;">
@@ -456,7 +444,7 @@ Missing
 <h3>
 <span class="header-section-number">3.2.1</span> Response rate &amp; retention<a class="anchor" aria-label="anchor" href="#response-rate-retention"><i class="fas fa-link"></i></a>
 </h3>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Get data on invite dates and Ns</span>
 <span class="va">invites</span> <span class="op">&lt;-</span> <span class="fu">read_csv</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Data"</span>, <span class="st">"invites.csv"</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">rename</span><span class="op">(</span>Game <span class="op">=</span> <span class="va">game</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -468,14 +456,14 @@ Missing
 <span class="co"># then calculate response rate / retention at each wave.</span>
 <span class="co"># This assumes there are no new participants at wave 3</span>
 <span class="co"># (people who didn't participate in wave 2 showed up at wave 3).</span>
-<span class="fu">bind_rows</span><span class="op">(</span>
+<span class="va">tmp</span> <span class="op">&lt;-</span> <span class="fu">bind_rows</span><span class="op">(</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">invites</span>, <span class="op">-</span><span class="va">date</span><span class="op">)</span>,
   <span class="va">d</span> <span class="op">%&gt;%</span> <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">Responded</span><span class="op">)</span> <span class="op">%&gt;%</span> <span class="fu">count</span><span class="op">(</span><span class="va">Game</span>, <span class="va">wid</span><span class="op">)</span>
 <span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">arrange</span><span class="op">(</span><span class="va">Game</span>, <span class="va">wid</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
-    R_rate <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/label_percent.html">percent</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">.01</span><span class="op">)</span>,
+    R_rate <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/label_percent.html">percent</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/stats/lag.html">lag</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>, <span class="fl">.1</span><span class="op">)</span>,
     n <span class="op">=</span> <span class="fu"><a href="https://scales.r-lib.org/reference/label_number.html">comma</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span>
   <span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">pivot_wider</span><span class="op">(</span>names_from <span class="op">=</span> <span class="va">wid</span>, values_from <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">n</span>, <span class="va">R_rate</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -486,7 +474,8 @@ Missing
     `Wave 3` <span class="op">=</span> <span class="fu">str_glue</span><span class="op">(</span><span class="st">"{n_3} ({R_rate_3})"</span><span class="op">)</span>
   <span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Game</span>, <span class="va">Invites</span><span class="op">:</span><span class="va">`Wave 3`</span><span class="op">)</span> <span class="op">%&gt;%</span>
-  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu">across</span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu">str_replace</span><span class="op">(</span><span class="va">.</span>, <span class="st">"NA"</span>, <span class="st">"0"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu">across</span><span class="op">(</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/everything.html">everything</a></span><span class="op">(</span><span class="op">)</span>, <span class="op">~</span> <span class="fu">str_replace</span><span class="op">(</span><span class="va">.</span>, <span class="st">"NA"</span>, <span class="st">"0"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>
+<span class="va">tmp</span> <span class="op">%&gt;%</span>   
   <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kbl.html">kbl</a></span><span class="op">(</span>caption <span class="op">=</span> <span class="st">"Number of people (response/retention rate) participating at each wave."</span><span class="op">)</span> <span class="op">%&gt;%</span> 
   <span class="fu"><a href="https://rdrr.io/pkg/kableExtra/man/kable_styling.html">kable_styling</a></span><span class="op">(</span>full_width <span class="op">=</span> <span class="cn">FALSE</span>, font_size <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></code></pre></div>
 <div class="inline-table"><table class="table" style="font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;">
@@ -519,13 +508,13 @@ AC:NH
 640,000
 </td>
 <td style="text-align:left;">
-13,536 (2.11%)
+13,536 (2.1%)
 </td>
 <td style="text-align:left;">
-5,049 (37.30%)
+5,049 (37.3%)
 </td>
 <td style="text-align:left;">
-4,084 (80.89%)
+4,084 (80.9%)
 </td>
 </tr>
 <tr>
@@ -536,13 +525,13 @@ Apex Legends
 900,000
 </td>
 <td style="text-align:left;">
-1,128 (0.13%)
+1,128 (0.1%)
 </td>
 <td style="text-align:left;">
-406 (35.99%)
+406 (36.0%)
 </td>
 <td style="text-align:left;">
-228 (56.16%)
+228 (56.2%)
 </td>
 </tr>
 <tr>
@@ -553,13 +542,13 @@ EVE Online
 30,000
 </td>
 <td style="text-align:left;">
-899 (3.00%)
+899 (3.0%)
 </td>
 <td style="text-align:left;">
-240 (26.70%)
+240 (26.7%)
 </td>
 <td style="text-align:left;">
-221 (92.08%)
+221 (92.1%)
 </td>
 </tr>
 <tr>
@@ -570,13 +559,13 @@ Forza Horizon 4
 834,515
 </td>
 <td style="text-align:left;">
-1,959 (0.23%)
+1,959 (0.2%)
 </td>
 <td style="text-align:left;">
-772 (39.41%)
+772 (39.4%)
 </td>
 <td style="text-align:left;">
-597 (77.33%)
+597 (77.3%)
 </td>
 </tr>
 <tr>
@@ -587,13 +576,13 @@ GT Sport
 1,729,677
 </td>
 <td style="text-align:left;">
-19,073 (1.10%)
+19,073 (1.1%)
 </td>
 <td style="text-align:left;">
-7,699 (40.37%)
+7,699 (40.4%)
 </td>
 <td style="text-align:left;">
-5,512 (71.59%)
+5,512 (71.6%)
 </td>
 </tr>
 <tr>
@@ -604,13 +593,13 @@ Outriders
 90,000.0
 </td>
 <td style="text-align:left;">
-1,525.0 (1.69%)
+1,525.0 (1.7%)
 </td>
 <td style="text-align:left;">
-379.0 (24.85%)
+379.0 (24.9%)
 </td>
 <td style="text-align:left;">
-370.0 (97.63%)
+370.0 (97.6%)
 </td>
 </tr>
 <tr>
@@ -621,24 +610,84 @@ The Crew 2
 1,013,000
 </td>
 <td style="text-align:left;">
-457 (0.05%)
+457 (0.0%)
 </td>
 <td style="text-align:left;">
-97 (21.23%)
+97 (21.2%)
 </td>
 <td style="text-align:left;">
-85 (87.63%)
+85 (87.6%)
 </td>
 </tr>
 </tbody>
 </table></div>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># Also save this table for MS</span>
+<span class="va">tmp</span> <span class="op">%&gt;%</span> 
+  <span class="fu">ungroup</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://davidgohel.github.io/flextable/reference/flextable.html">flextable</a></span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://davidgohel.github.io/flextable/reference/save_as_docx.html">save_as_docx</a></span><span class="op">(</span>path <span class="op">=</span> <span class="st">"Figures/Retention-rates.docx"</span><span class="op">)</span></code></pre></div>
 </div>
-<div id="response-dates" class="section level3" number="3.2.2">
+<div id="differences" class="section level3" number="3.2.2">
 <h3>
-<span class="header-section-number">3.2.2</span> Response dates<a class="anchor" aria-label="anchor" href="#response-dates"><i class="fas fa-link"></i></a>
+<span class="header-section-number">3.2.2</span> Differences<a class="anchor" aria-label="anchor" href="#differences"><i class="fas fa-link"></i></a>
+</h3>
+<p>We then looked at differences between people who dropped out vs who did not.</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">tmp</span> <span class="op">&lt;-</span> <span class="va">d</span> <span class="op">%&gt;%</span> 
+  <span class="fu">replace_na</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>Responded <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">Game</span>, <span class="va">pid</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">summarise</span><span class="op">(</span>
+    <span class="fu">across</span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="va">Affect</span>, <span class="va">`Life satisfaction`</span>, 
+        <span class="va">Intrinsic</span>, <span class="va">Extrinsic</span>, 
+        <span class="va">Age</span>, <span class="va">Experience</span>, <span class="va">Hours</span><span class="op">)</span>,
+      <span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span>
+    <span class="op">)</span>,
+    dropped <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/r/base/sum.html">sum</a></span><span class="op">(</span><span class="va">Responded</span><span class="op">)</span> <span class="op">!=</span> <span class="fl">3</span>, 
+      levels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="cn">FALSE</span>, <span class="cn">TRUE</span><span class="op">)</span>, 
+      labels <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html">c</a></span><span class="op">(</span><span class="st">"No"</span>, <span class="st">"Yes"</span><span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+<span class="va">tmp</span> <span class="op">&lt;-</span> <span class="fu">ungroup</span><span class="op">(</span><span class="va">tmp</span><span class="op">)</span>
+<span class="va">tmp</span> <span class="op">&lt;-</span> <span class="va">tmp</span> <span class="op">%&gt;%</span> 
+  <span class="fu">pivot_longer</span><span class="op">(</span><span class="va">Affect</span><span class="op">:</span><span class="va">Hours</span><span class="op">)</span>
+<span class="va">tmp</span> <span class="op">%&gt;%</span>   
+  <span class="fu">ggplot</span><span class="op">(</span><span class="fu">aes</span><span class="op">(</span><span class="va">dropped</span>, <span class="va">value</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">stat_summary</span><span class="op">(</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">stat_summary</span><span class="op">(</span>fun <span class="op">=</span> <span class="va">mean</span>, geom <span class="op">=</span> <span class="st">"line"</span>, group <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> <span class="op">+</span>
+  <span class="fu">facet_grid</span><span class="op">(</span><span class="va">name</span><span class="op">~</span><span class="va">Game</span>, scales <span class="op">=</span> <span class="st">"free_y"</span>, margins <span class="op">=</span> <span class="st">"Game"</span><span class="op">)</span></code></pre></div>
+<div class="inline-figure"><img src="02-descriptive_files/figure-html/unnamed-chunk-1-1.png" width="672" style="display: block; margin: auto;"></div>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="va">out</span> <span class="op">&lt;-</span> <span class="va">tmp</span> <span class="op">%&gt;%</span> 
+  <span class="fu">group_by</span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">summarise</span><span class="op">(</span>
+    fit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html">list</a></span><span class="op">(</span>
+      <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/lmer.html">lmer</a></span><span class="op">(</span><span class="va">value</span> <span class="op">~</span> <span class="va">dropped</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="va">dropped</span> <span class="op">|</span> <span class="va">Game</span><span class="op">)</span>, data <span class="op">=</span> <span class="fu">cur_data</span><span class="op">(</span><span class="op">)</span><span class="op">)</span>
+    <span class="op">)</span>
+  <span class="op">)</span>
+<span class="va">out</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>
+    out <span class="op">=</span> <span class="fu">map</span><span class="op">(</span><span class="va">fit</span>, <span class="op">~</span><span class="fu"><a href="https://generics.r-lib.org/reference/tidy.html">tidy</a></span><span class="op">(</span><span class="va">.x</span>, <span class="st">"fixed"</span><span class="op">)</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="op">-</span><span class="va">fit</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">unnest</span><span class="op">(</span><span class="va">out</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">term</span> <span class="op">!=</span> <span class="st">"(Intercept)"</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span><span class="fu">across</span><span class="op">(</span><span class="fu">where</span><span class="op">(</span><span class="va">is.numeric</span><span class="op">)</span>, <span class="op">~</span><span class="fu"><a href="https://scales.r-lib.org/reference/number.html">number</a></span><span class="op">(</span><span class="va">.</span>, <span class="fl">.01</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu">transmute</span><span class="op">(</span>
+    Variable <span class="op">=</span> <span class="va">name</span>,
+    Difference <span class="op">=</span> <span class="fu">str_glue</span><span class="op">(</span><span class="st">"{estimate} ({std.error})"</span><span class="op">)</span>
+  <span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://davidgohel.github.io/flextable/reference/flextable.html">flextable</a></span><span class="op">(</span>cwidth <span class="op">=</span> <span class="fl">2</span><span class="op">)</span> <span class="op">%&gt;%</span> 
+  <span class="fu"><a href="https://davidgohel.github.io/flextable/reference/save_as_docx.html">save_as_docx</a></span><span class="op">(</span>path <span class="op">=</span> <span class="st">"Figures/Between-dropout-table.docx"</span><span class="op">)</span></code></pre></div>
+</div>
+<div id="response-dates" class="section level3" number="3.2.3">
+<h3>
+<span class="header-section-number">3.2.3</span> Response dates<a class="anchor" aria-label="anchor" href="#response-dates"><i class="fas fa-link"></i></a>
 </h3>
 <p>Only for actual responses (not rows where survey date was filled to be able to join telemetry)</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">d</span> <span class="op">%&gt;%</span>
   <span class="co"># Take only actually responded-to waves</span>
   <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">Responded</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -665,7 +714,7 @@ Figure 3.1: Histograms of response dates.
 </p>
 </div>
 <p>Response times</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">d</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">Responded</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Hour <span class="op">=</span> <span class="fu"><a href="https://lubridate.tidyverse.org/reference/hour.html">hour</a></span><span class="op">(</span><span class="va">StartDate</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -689,12 +738,12 @@ Figure 3.1: Histograms of response dates.
 Figure 3.2: Histograms of response times (in UTC).
 </p>
 </div>
-<div id="durations-between-waves" class="section level4" number="3.2.2.1">
+<div id="durations-between-waves" class="section level4" number="3.2.3.1">
 <h4>
-<span class="header-section-number">3.2.2.1</span> Durations between waves<a class="anchor" aria-label="anchor" href="#durations-between-waves"><i class="fas fa-link"></i></a>
+<span class="header-section-number">3.2.3.1</span> Durations between waves<a class="anchor" aria-label="anchor" href="#durations-between-waves"><i class="fas fa-link"></i></a>
 </h4>
 <p>Participants could respond with variable delays due to variation in email schedules and late responding. So we also check the actual intervals between completing waves. Very small values are possible because a participant could have e.g. completed both waves 2 and 3 in succession after receiving wave 3 invitation. Note that negative values were also possible for this reason but they were excluded before. (This figure is restricted to 5-30 day intervals to display the bulk of the data.)</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Table</span>
 <span class="va">d</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html">select</a></span><span class="op">(</span><span class="va">Wave</span>, <span class="va">Game</span>, <span class="va">interval</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -763,7 +812,7 @@ Figure 3.2: Histograms of response times (in UTC).
 </td>
 </tr></tbody>
 </table></div>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Figure</span>
 <span class="va">d</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://rdrr.io/r/stats/filter.html">filter</a></span><span class="op">(</span><span class="va">Wave</span> <span class="op">!=</span> <span class="st">"Wave 1"</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -794,56 +843,58 @@ Figure 3.3: Histograms of intervals between participants completing the survey w
 <h2>
 <span class="header-section-number">3.3</span> System information<a class="anchor" aria-label="anchor" href="#system-information-1"><i class="fas fa-link"></i></a>
 </h2>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://rdrr.io/r/utils/sessionInfo.html">sessionInfo</a></span><span class="op">(</span><span class="op">)</span></code></pre></div>
-<pre><code>## R version 4.1.1 (2021-08-10)
-## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Big Sur 10.16
+<pre><code>## R version 4.1.2 (2021-11-01)
+## Platform: aarch64-apple-darwin20 (64-bit)
+## Running under: macOS Monterey 12.2.1
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] lubridate_1.8.0  forcats_0.5.1    stringr_1.4.0    dplyr_1.0.7     
-##  [5] purrr_0.3.4      readr_2.0.2      tidyr_1.1.4      tibble_3.1.5    
-##  [9] ggplot2_3.3.5    tidyverse_1.3.1  showtext_0.9-4   showtextdb_3.0  
-## [13] sysfonts_0.8.5   here_1.0.1       kableExtra_1.3.4 gtsummary_1.4.2 
-## [17] scales_1.1.1     knitr_1.36      
+##  [1] lubridate_1.8.0   forcats_0.5.1     stringr_1.4.0     dplyr_1.0.7      
+##  [5] purrr_0.3.4       readr_2.0.2       tidyr_1.1.4       tibble_3.1.5     
+##  [9] tidyverse_1.3.1   here_1.0.1        kableExtra_1.3.4  broom.mixed_0.2.7
+## [13] lme4_1.1-27.1     Matrix_1.3-4      flextable_0.7.0   gtsummary_1.4.2  
+## [17] scales_1.1.1      knitr_1.36        ggplot2_3.3.5    
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] fs_1.5.0            bit64_4.0.5         webshot_0.5.2      
-##  [4] httr_1.4.2          rprojroot_2.0.2     tools_4.1.1        
-##  [7] backports_1.2.1     bslib_0.3.1         utf8_1.2.2         
-## [10] R6_2.5.1            DBI_1.1.1           colorspace_2.0-2   
-## [13] withr_2.4.2         tidyselect_1.1.1    downlit_0.2.1      
-## [16] bit_4.0.4           curl_4.3.2          compiler_4.1.1     
+##  [1] nlme_3.1-153        fs_1.5.0            bit64_4.0.5        
+##  [4] webshot_0.5.2       httr_1.4.2          rprojroot_2.0.2    
+##  [7] tools_4.1.2         backports_1.2.1     bslib_0.3.1        
+## [10] utf8_1.2.2          R6_2.5.1            DBI_1.1.1          
+## [13] colorspace_2.0-2    withr_2.4.2         tidyselect_1.1.1   
+## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.2     
 ## [19] textshaping_0.3.5   cli_3.0.1           rvest_1.0.1        
-## [22] gt_0.3.1            xml2_1.3.2          labeling_0.4.2     
-## [25] bookdown_0.24       sass_0.4.0          systemfonts_1.0.2  
-## [28] digest_0.6.28       rmarkdown_2.11      svglite_2.0.0      
-## [31] pkgconfig_2.0.3     htmltools_0.5.2     dbplyr_2.1.1       
-## [34] fastmap_1.1.0       highr_0.9           rlang_0.4.11       
-## [37] readxl_1.3.1        rstudioapi_0.13     farver_2.1.0       
-## [40] jquerylib_0.1.4     generics_0.1.0      jsonlite_1.7.2     
-## [43] vroom_1.5.5         magrittr_2.0.1      Matrix_1.3-4       
-## [46] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
-## [49] lifecycle_1.0.1     stringi_1.7.5       yaml_2.2.1         
-## [52] grid_4.1.1          parallel_4.1.1      crayon_1.4.1       
-## [55] lattice_0.20-45     haven_2.4.3         splines_4.1.1      
-## [58] hms_1.1.1           pillar_1.6.3        codetools_0.2-18   
-## [61] reprex_2.0.1        glue_1.4.2          evaluate_0.14      
-## [64] broom.helpers_1.4.0 renv_0.14.0         modelr_0.1.8       
-## [67] vctrs_0.3.8         tzdb_0.1.2          cellranger_1.1.0   
-## [70] gtable_0.3.0        assertthat_0.2.1    xfun_0.26          
-## [73] broom_0.7.9         ragg_1.1.3          survival_3.2-13    
-## [76] viridisLite_0.4.0   ellipsis_0.3.2</code></pre>
+## [22] gt_0.3.1            xml2_1.3.2          officer_0.4.1      
+## [25] labeling_0.4.2      bookdown_0.24       sass_0.4.0         
+## [28] systemfonts_1.0.2   digest_0.6.28       minqa_1.2.4        
+## [31] rmarkdown_2.11      svglite_2.0.0       base64enc_0.1-3    
+## [34] pkgconfig_2.0.3     htmltools_0.5.2     highr_0.9          
+## [37] dbplyr_2.1.1        fastmap_1.1.0       readxl_1.3.1       
+## [40] rlang_0.4.11        rstudioapi_0.13     farver_2.1.0       
+## [43] jquerylib_0.1.4     generics_0.1.0      jsonlite_1.7.2     
+## [46] vroom_1.5.5         zip_2.2.0           magrittr_2.0.1     
+## [49] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
+## [52] gdtools_0.2.4       lifecycle_1.0.1     stringi_1.7.5      
+## [55] yaml_2.2.1          MASS_7.3-54         grid_4.1.2         
+## [58] parallel_4.1.2      crayon_1.4.1        lattice_0.20-45    
+## [61] haven_2.4.3         splines_4.1.2       hms_1.1.1          
+## [64] pillar_1.6.3        uuid_0.1-4          boot_1.3-28        
+## [67] codetools_0.2-18    reprex_2.0.1        glue_1.4.2         
+## [70] evaluate_0.14       modelr_0.1.8        data.table_1.14.2  
+## [73] broom.helpers_1.4.0 renv_0.14.0         tzdb_0.1.2         
+## [76] vctrs_0.3.8         nloptr_1.2.2.2      cellranger_1.1.0   
+## [79] gtable_0.3.0        assertthat_0.2.1    xfun_0.26          
+## [82] broom_0.7.9         ragg_1.1.3          survival_3.2-13    
+## [85] viridisLite_0.4.0   ellipsis_0.3.2</code></pre>
 
 </div>
 </div>
@@ -858,7 +909,8 @@ Figure 3.3: Histograms of intervals between participants completing the survey w
 <li>
 <a class="nav-link" href="#survey-descriptives"><span class="header-section-number">3.2</span> Survey descriptives</a><ul class="nav navbar-nav">
 <li><a class="nav-link" href="#response-rate-retention"><span class="header-section-number">3.2.1</span> Response rate &amp; retention</a></li>
-<li><a class="nav-link" href="#response-dates"><span class="header-section-number">3.2.2</span> Response dates</a></li>
+<li><a class="nav-link" href="#differences"><span class="header-section-number">3.2.2</span> Differences</a></li>
+<li><a class="nav-link" href="#response-dates"><span class="header-section-number">3.2.3</span> Response dates</a></li>
 </ul>
 </li>
 <li><a class="nav-link" href="#system-information-1"><span class="header-section-number">3.3</span> System information</a></li>
@@ -879,7 +931,7 @@ Figure 3.3: Histograms of intervals between participants completing the survey w
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Game play and well-being | Online analysis supplement</strong>" was written by Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski. It was last built on 2021-10-11.</p>
+    <p>"<strong>Game play and well-being | Online analysis supplement</strong>" was written by Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski. It was last built on 2022-03-11.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">

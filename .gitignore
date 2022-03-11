@@ -47,8 +47,10 @@ Output/descriptive_files/
 Output/*.html
 Output/Figures/*.png
 Output/brms/*.rds
+Figures/*
 gametime_longitudinal.rds
 _bookdown_files/
+**/*.docx
 
 # Temporary files (cache for slow computations)
 Temp/
