@@ -25,6 +25,8 @@ This repository ([GitHub](https://github.com/digital-wellbeing/gametime-longitud
   - An archived permanent copy of the GitHub repository
 - [Online analysis supplement](https://digital-wellbeing.github.io/gametime-longitudinal)
   - The output document of our analyses
+- [![DOI](https://zenodo.org/badge/373533911.svg)](https://zenodo.org/badge/latestdoi/373533911)
+  - Zenodo archive
 
 In addition to raw data, the repository contains many survey and telemetry variables that we did not analyse, but that may be of interest to further analyses of gameplay and well being. 
 
