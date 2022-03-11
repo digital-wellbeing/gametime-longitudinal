@@ -7,30 +7,13 @@ Load the required packages.
 library(knitr)
 library(scales)
 library(gtsummary)
+library(flextable)
+library(lme4)
+library(broom.mixed)
 library(kableExtra)
 library(here)
-library(showtext)
 library(tidyverse)
 library(lubridate)
-```
-
-Figure options.
-
-
-```r
-# Plotting options
-Font <- "Titillium Web"
-font_add_google(Font, Font)
-theme_set(
-  theme_linedraw(
-    base_family = Font,
-    base_size = 12
-  ) +
-    theme(
-      panel.grid.minor = element_blank(),
-      panel.grid.major.x = element_blank()
-    )
-)
 ```
 
 We then load the previously cleaned data table.
@@ -219,14 +202,14 @@ invites <- read_csv(here("Data", "invites.csv")) %>%
 # then calculate response rate / retention at each wave.
 # This assumes there are no new participants at wave 3
 # (people who didn't participate in wave 2 showed up at wave 3).
-bind_rows(
+tmp <- bind_rows(
   select(invites, -date),
   d %>% filter(Responded) %>% count(Game, wid)
 ) %>%
   arrange(Game, wid) %>%
   group_by(Game) %>%
   mutate(
-    R_rate = percent(n / lag(n), .01),
+    R_rate = percent(n / lag(n), .1),
     n = comma(n)
   ) %>%
   pivot_wider(names_from = wid, values_from = c(n, R_rate)) %>%
@@ -237,7 +220,8 @@ bind_rows(
     `Wave 3` = str_glue("{n_3} ({R_rate_3})")
   ) %>%
   select(Game, Invites:`Wave 3`) %>%
-  mutate(across(everything(), ~ str_replace(., "NA", "0"))) %>%
+  mutate(across(everything(), ~ str_replace(., "NA", "0")))
+tmp %>%   
   kbl(caption = "Number of people (response/retention rate) participating at each wave.") %>% 
   kable_styling(full_width = FALSE, font_size = 12)
 ```
@@ -257,54 +241,121 @@ bind_rows(
   <tr>
    <td style="text-align:left;"> AC:NH </td>
    <td style="text-align:left;"> 640,000 </td>
-   <td style="text-align:left;"> 13,536 (2.11%) </td>
-   <td style="text-align:left;"> 5,049 (37.30%) </td>
-   <td style="text-align:left;"> 4,084 (80.89%) </td>
+   <td style="text-align:left;"> 13,536 (2.1%) </td>
+   <td style="text-align:left;"> 5,049 (37.3%) </td>
+   <td style="text-align:left;"> 4,084 (80.9%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Apex Legends </td>
    <td style="text-align:left;"> 900,000 </td>
-   <td style="text-align:left;"> 1,128 (0.13%) </td>
-   <td style="text-align:left;"> 406 (35.99%) </td>
-   <td style="text-align:left;"> 228 (56.16%) </td>
+   <td style="text-align:left;"> 1,128 (0.1%) </td>
+   <td style="text-align:left;"> 406 (36.0%) </td>
+   <td style="text-align:left;"> 228 (56.2%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> EVE Online </td>
    <td style="text-align:left;"> 30,000 </td>
-   <td style="text-align:left;"> 899 (3.00%) </td>
-   <td style="text-align:left;"> 240 (26.70%) </td>
-   <td style="text-align:left;"> 221 (92.08%) </td>
+   <td style="text-align:left;"> 899 (3.0%) </td>
+   <td style="text-align:left;"> 240 (26.7%) </td>
+   <td style="text-align:left;"> 221 (92.1%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Forza Horizon 4 </td>
    <td style="text-align:left;"> 834,515 </td>
-   <td style="text-align:left;"> 1,959 (0.23%) </td>
-   <td style="text-align:left;"> 772 (39.41%) </td>
-   <td style="text-align:left;"> 597 (77.33%) </td>
+   <td style="text-align:left;"> 1,959 (0.2%) </td>
+   <td style="text-align:left;"> 772 (39.4%) </td>
+   <td style="text-align:left;"> 597 (77.3%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> GT Sport </td>
    <td style="text-align:left;"> 1,729,677 </td>
-   <td style="text-align:left;"> 19,073 (1.10%) </td>
-   <td style="text-align:left;"> 7,699 (40.37%) </td>
-   <td style="text-align:left;"> 5,512 (71.59%) </td>
+   <td style="text-align:left;"> 19,073 (1.1%) </td>
+   <td style="text-align:left;"> 7,699 (40.4%) </td>
+   <td style="text-align:left;"> 5,512 (71.6%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> Outriders </td>
    <td style="text-align:left;"> 90,000.0 </td>
-   <td style="text-align:left;"> 1,525.0 (1.69%) </td>
-   <td style="text-align:left;"> 379.0 (24.85%) </td>
-   <td style="text-align:left;"> 370.0 (97.63%) </td>
+   <td style="text-align:left;"> 1,525.0 (1.7%) </td>
+   <td style="text-align:left;"> 379.0 (24.9%) </td>
+   <td style="text-align:left;"> 370.0 (97.6%) </td>
   </tr>
   <tr>
    <td style="text-align:left;"> The Crew 2 </td>
    <td style="text-align:left;"> 1,013,000 </td>
-   <td style="text-align:left;"> 457 (0.05%) </td>
-   <td style="text-align:left;"> 97 (21.23%) </td>
-   <td style="text-align:left;"> 85 (87.63%) </td>
+   <td style="text-align:left;"> 457 (0.0%) </td>
+   <td style="text-align:left;"> 97 (21.2%) </td>
+   <td style="text-align:left;"> 85 (87.6%) </td>
   </tr>
 </tbody>
 </table>
+
+```r
+# Also save this table for MS
+tmp %>% 
+  ungroup() %>% 
+  flextable() %>% 
+  save_as_docx(path = "Figures/Retention-rates.docx")
+```
+
+### Differences
+
+We then looked at differences between people who dropped out vs who did not.
+
+
+```r
+tmp <- d %>% 
+  replace_na(list(Responded = FALSE)) %>%
+  group_by(Game, pid) %>% 
+  summarise(
+    across(
+      c(Affect, `Life satisfaction`, 
+        Intrinsic, Extrinsic, 
+        Age, Experience, Hours),
+      mean, na.rm = TRUE
+    ),
+    dropped = factor(
+      sum(Responded) != 3, 
+      levels = c(FALSE, TRUE), 
+      labels = c("No", "Yes")
+    )
+  )
+tmp <- ungroup(tmp)
+tmp <- tmp %>% 
+  pivot_longer(Affect:Hours)
+tmp %>%   
+  ggplot(aes(dropped, value)) +
+  stat_summary() +
+  stat_summary(fun = mean, geom = "line", group = 1) +
+  facet_grid(name~Game, scales = "free_y", margins = "Game")
+```
+
+<img src="02-descriptive_files/figure-html/unnamed-chunk-1-1.png" width="672" style="display: block; margin: auto;" />
+
+```r
+out <- tmp %>% 
+  group_by(name) %>% 
+  summarise(
+    fit = list(
+      lmer(value ~ dropped + (1 + dropped | Game), data = cur_data())
+    )
+  )
+out %>% 
+  mutate(
+    out = map(fit, ~tidy(.x, "fixed"))
+  ) %>% 
+  select(-fit) %>% 
+  unnest(out) %>% 
+  filter(term != "(Intercept)") %>% 
+  mutate(across(where(is.numeric), ~number(., .01))) %>% 
+  transmute(
+    Variable = name,
+    Difference = str_glue("{estimate} ({std.error})")
+  ) %>% 
+  flextable(cwidth = 2) %>% 
+  save_as_docx(path = "Figures/Between-dropout-table.docx")
+```
+
 
 ### Response dates
 
@@ -450,52 +501,54 @@ sessionInfo()
 ```
 
 ```
-## R version 4.1.1 (2021-08-10)
-## Platform: x86_64-apple-darwin17.0 (64-bit)
-## Running under: macOS Big Sur 10.16
+## R version 4.1.2 (2021-11-01)
+## Platform: aarch64-apple-darwin20 (64-bit)
+## Running under: macOS Monterey 12.2.1
 ## 
 ## Matrix products: default
-## BLAS:   /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRblas.0.dylib
-## LAPACK: /Library/Frameworks/R.framework/Versions/4.1/Resources/lib/libRlapack.dylib
+## LAPACK: /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
-## [1] en_GB.UTF-8/en_GB.UTF-8/en_GB.UTF-8/C/en_GB.UTF-8/en_GB.UTF-8
+## [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 ## 
 ## attached base packages:
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] lubridate_1.8.0  forcats_0.5.1    stringr_1.4.0    dplyr_1.0.7     
-##  [5] purrr_0.3.4      readr_2.0.2      tidyr_1.1.4      tibble_3.1.5    
-##  [9] ggplot2_3.3.5    tidyverse_1.3.1  showtext_0.9-4   showtextdb_3.0  
-## [13] sysfonts_0.8.5   here_1.0.1       kableExtra_1.3.4 gtsummary_1.4.2 
-## [17] scales_1.1.1     knitr_1.36      
+##  [1] lubridate_1.8.0   forcats_0.5.1     stringr_1.4.0     dplyr_1.0.7      
+##  [5] purrr_0.3.4       readr_2.0.2       tidyr_1.1.4       tibble_3.1.5     
+##  [9] tidyverse_1.3.1   here_1.0.1        kableExtra_1.3.4  broom.mixed_0.2.7
+## [13] lme4_1.1-27.1     Matrix_1.3-4      flextable_0.7.0   gtsummary_1.4.2  
+## [17] scales_1.1.1      knitr_1.36        ggplot2_3.3.5    
 ## 
 ## loaded via a namespace (and not attached):
-##  [1] fs_1.5.0            bit64_4.0.5         webshot_0.5.2      
-##  [4] httr_1.4.2          rprojroot_2.0.2     tools_4.1.1        
-##  [7] backports_1.2.1     bslib_0.3.1         utf8_1.2.2         
-## [10] R6_2.5.1            DBI_1.1.1           colorspace_2.0-2   
-## [13] withr_2.4.2         tidyselect_1.1.1    downlit_0.2.1      
-## [16] bit_4.0.4           curl_4.3.2          compiler_4.1.1     
+##  [1] nlme_3.1-153        fs_1.5.0            bit64_4.0.5        
+##  [4] webshot_0.5.2       httr_1.4.2          rprojroot_2.0.2    
+##  [7] tools_4.1.2         backports_1.2.1     bslib_0.3.1        
+## [10] utf8_1.2.2          R6_2.5.1            DBI_1.1.1          
+## [13] colorspace_2.0-2    withr_2.4.2         tidyselect_1.1.1   
+## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.2     
 ## [19] textshaping_0.3.5   cli_3.0.1           rvest_1.0.1        
-## [22] gt_0.3.1            xml2_1.3.2          labeling_0.4.2     
-## [25] bookdown_0.24       sass_0.4.0          systemfonts_1.0.2  
-## [28] digest_0.6.28       rmarkdown_2.11      svglite_2.0.0      
-## [31] pkgconfig_2.0.3     htmltools_0.5.2     dbplyr_2.1.1       
-## [34] fastmap_1.1.0       highr_0.9           rlang_0.4.11       
-## [37] readxl_1.3.1        rstudioapi_0.13     farver_2.1.0       
-## [40] jquerylib_0.1.4     generics_0.1.0      jsonlite_1.7.2     
-## [43] vroom_1.5.5         magrittr_2.0.1      Matrix_1.3-4       
-## [46] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
-## [49] lifecycle_1.0.1     stringi_1.7.5       yaml_2.2.1         
-## [52] grid_4.1.1          parallel_4.1.1      crayon_1.4.1       
-## [55] lattice_0.20-45     haven_2.4.3         splines_4.1.1      
-## [58] hms_1.1.1           pillar_1.6.3        codetools_0.2-18   
-## [61] reprex_2.0.1        glue_1.4.2          evaluate_0.14      
-## [64] broom.helpers_1.4.0 renv_0.14.0         modelr_0.1.8       
-## [67] vctrs_0.3.8         tzdb_0.1.2          cellranger_1.1.0   
-## [70] gtable_0.3.0        assertthat_0.2.1    xfun_0.26          
-## [73] broom_0.7.9         ragg_1.1.3          survival_3.2-13    
-## [76] viridisLite_0.4.0   ellipsis_0.3.2
+## [22] gt_0.3.1            xml2_1.3.2          officer_0.4.1      
+## [25] labeling_0.4.2      bookdown_0.24       sass_0.4.0         
+## [28] systemfonts_1.0.2   digest_0.6.28       minqa_1.2.4        
+## [31] rmarkdown_2.11      svglite_2.0.0       base64enc_0.1-3    
+## [34] pkgconfig_2.0.3     htmltools_0.5.2     highr_0.9          
+## [37] dbplyr_2.1.1        fastmap_1.1.0       readxl_1.3.1       
+## [40] rlang_0.4.11        rstudioapi_0.13     farver_2.1.0       
+## [43] jquerylib_0.1.4     generics_0.1.0      jsonlite_1.7.2     
+## [46] vroom_1.5.5         zip_2.2.0           magrittr_2.0.1     
+## [49] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
+## [52] gdtools_0.2.4       lifecycle_1.0.1     stringi_1.7.5      
+## [55] yaml_2.2.1          MASS_7.3-54         grid_4.1.2         
+## [58] parallel_4.1.2      crayon_1.4.1        lattice_0.20-45    
+## [61] haven_2.4.3         splines_4.1.2       hms_1.1.1          
+## [64] pillar_1.6.3        uuid_0.1-4          boot_1.3-28        
+## [67] codetools_0.2-18    reprex_2.0.1        glue_1.4.2         
+## [70] evaluate_0.14       modelr_0.1.8        data.table_1.14.2  
+## [73] broom.helpers_1.4.0 renv_0.14.0         tzdb_0.1.2         
+## [76] vctrs_0.3.8         nloptr_1.2.2.2      cellranger_1.1.0   
+## [79] gtable_0.3.0        assertthat_0.2.1    xfun_0.26          
+## [82] broom_0.7.9         ragg_1.1.3          survival_3.2-13    
+## [85] viridisLite_0.4.0   ellipsis_0.3.2
 ```
