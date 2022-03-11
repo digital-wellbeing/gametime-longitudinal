@@ -1433,20 +1433,6 @@
       "Repository": "CRAN",
       "Hash": "30f0ebc41feba25691073626ff5e2cf4"
     },
-    "showtext": {
-      "Package": "showtext",
-      "Version": "0.9-4",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "57151c081eee689dc669d1bb9a77bbb7"
-    },
-    "showtextdb": {
-      "Package": "showtextdb",
-      "Version": "3.0",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "c12e756cf947e58b0f2c2a520521a5a8"
-    },
     "snakecase": {
       "Package": "snakecase",
       "Version": "0.11.0",
@@ -1509,13 +1495,6 @@
       "Source": "Repository",
       "Repository": "CRAN",
       "Hash": "b227d13e29222b4574486cfcbde077fa"
-    },
-    "sysfonts": {
-      "Package": "sysfonts",
-      "Version": "0.8.5",
-      "Source": "Repository",
-      "Repository": "CRAN",
-      "Hash": "d5e2db91a3aa1ac242a6edb6b2093eb5"
     },
     "systemfonts": {
       "Package": "systemfonts",

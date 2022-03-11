@@ -22,7 +22,6 @@ library(ggstance)
 library(ggdist)
 library(patchwork)
 library(lavaan)
-library(showtext)
 library(multidplyr)
 library(tidyverse)
 library(tidybayes)
@@ -829,8 +828,7 @@ fp_3 <- forest_plot(
   parameters = c("wy2 ~ wx1"),
   lavaan = FALSE,
   x_limits = c(-.5, .4)
-) +
-  theme(axis.title.x = element_blank())
+)
 fp_4 <- forest_plot(
   object = fit_ma_sum,
   type = "Unstandardized",

@@ -16,7 +16,6 @@ library(scales)
 library(lubridate)
 library(gtsummary)
 library(multidplyr)
-library(showtext)
 library(tidyverse)
 library(sessioninfo)
 ```
