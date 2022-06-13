@@ -56,6 +56,7 @@ summarize_ma <- function(object) {
 forest_plot <- function(object,
                         type = "Unstandardized",
                         x_var = "Hours",
+                        y_var = c("Affect", "Life satisfaction"),
                         parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
                         x_limits = c(-0.2, 0.2),
                         lavaan = FALSE) {
@@ -63,6 +64,7 @@ forest_plot <- function(object,
     filter(
       Type == {{ type }},
       x_var == {{ x_var }},
+      y_var %in% {{ y_var }},
       Parameter %in% {{ parameters }}
     ) %>%
     # We can use the xintercept mapping to control alpha below
@@ -89,6 +91,7 @@ forest_plot <- function(object,
         filter(
           Type == {{ type }},
           x_var == {{ x_var }},
+          y_var %in% {{ y_var }},
           Parameter %in% {{ parameters }}
         ),
       aes(
@@ -117,6 +120,7 @@ forest_plot <- function(object,
         filter(
           Type == {{ type }},
           x_var == {{ x_var }},
+          y_var %in% {{ y_var }},
           Parameter %in% {{ parameters }}
         ),
       vjust = 1.4, size = 2.3,
@@ -144,6 +148,7 @@ forest_plot <- function(object,
           filter(
             Type == {{ type }},
             x_var == {{ x_var }},
+            y_var %in% {{ y_var }},
             Parameter %in% {{ parameters }}
           ) %>%
           left_join(Order),
