@@ -50,6 +50,9 @@ if (require("cmdstanr")) options(brms.backend = "cmdstanr")
 
 # Save outputs here
 dir.create("models", FALSE)
+
+# Functions in R/
+source(here("R", "meta-analysis-helpers.R"))
 ```
 
 We analyse the data cleaned previously.
@@ -91,7 +94,7 @@ d %>%
   tabyl(Hours_over_3) %>%
   adorn_pct_formatting() %>% 
   kbl(caption = "Table of hours excluded from figure") %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ```{r variables-over-time}
@@ -148,6 +151,10 @@ tmp %>%
   theme(
     legend.position = "none"
   )
+```
+
+
+```{r, include = FALSE}
 agg_png(
   "Figures/Fig-variables-over-time.png", 
   width = W, height = W*0.7, units = "cm", res = 400
@@ -186,7 +193,7 @@ parameters_change_over_time %>%
   select(Variable, term, Result) %>%
   pivot_wider(names_from = term, values_from = Result) %>% 
   kbl(caption = "Change over time parameter estimates") %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ## Simple correlation
@@ -333,7 +340,10 @@ d_riclpm_plots %>%
     aspect.ratio = 1,
     panel.grid = element_blank()
   )
+```
 
+
+```{r, include = FALSE}
 agg_png(
   "Figures/Fig-cl-scatter-hours.png", 
   width = W, height = W*0.6, units = "cm", res = 400
@@ -391,6 +401,10 @@ p_tmp_2
 #|  Scatterplots of well-being (rows indicate variables and waves) on intrinsic and extrinsic motivation during the previous wave. Regression lines are GAM fitted lines and 95%CIs.
 
 p_tmp_1 / p_tmp_2
+```
+
+
+```{r, include = FALSE}
 agg_png(
   "Figures/Fig-cl-scatter-motivations.png", 
   width = W, height = W*1.1, units = "cm", res = 400
@@ -612,7 +626,7 @@ pars_riclpm %>%
   kbl(
     caption = "RICLPM regression parameters from pooled model."
   ) %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ### Table of parameters
@@ -657,7 +671,7 @@ fit_riclpm_games %>%
   rename(Outcome = y_var) %>%
   arrange(Outcome, Game) %>%
   kbl(caption = "Sample sizes per RICLPM") %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 Then conduct all meta-analyses (for each model, y_var-x_var pair, parameter of interest, and type of parameter (standardized, unstandardized)) of the game-specific RICLPM parameters.
@@ -678,9 +692,13 @@ d_ma <- pars_riclpm %>%
     x_var, Game, Parameter, 
     est, se, ci.lower, ci.upper
   )
-cluster_library(cluster, c("brms", "purrr", "cmdstanr", "rstan"))
 path <- "models/all-meta-analyses.rds"
 if (!file.exists(path)) {
+  cluster_copy(cluster, "get_ma_post")
+  cluster_library(
+    cluster, 
+    c("brms", "purrr", "cmdstanr", "rstan", "bayestestR", "forcats")
+    )
   fit_ma <- d_ma %>%
     mutate(
       name = str_glue("models/brm-{model}-{Type}-{y_var}-{x_var}-{Parameter}")
@@ -689,6 +707,7 @@ if (!file.exists(path)) {
     nest() %>% 
     partition(cluster) %>%
     mutate(
+      # Fit model
       fit = map2(
         data, name,
         ~brm(
@@ -700,12 +719,50 @@ if (!file.exists(path)) {
           iter = 15000, warmup = 10000,
           file = .y
         )
+      ),
+      # Table of posterior samples
+      posterior = map(fit, get_ma_post),
+      # Table of posterior summary
+      summary = map(
+        posterior,
+        ~ describe_posterior(
+          .x, 
+          centrality = "mean", 
+          ci = 0.95, 
+          ci_method = "eti",
+          test = "pd"
+        ) %>%
+          rename(Game = Parameter) %>% 
+          mutate(Game = fct_relevel(Game, "Average")) %>% 
+          as_tibble()
+      ),
+      # 
+      sd = map(
+        fit, 
+        ~posterior_summary(.x, variable = "sd_Game__Intercept") %>% 
+          as_tibble()
       )
     ) %>% 
     collect() %>%
-    ungroup()
+    ungroup() %>% 
+    select(-name, -fit)
   saveRDS(fit_ma, path, compress = FALSE)
 } else {fit_ma <- readRDS(path)}
+
+# Arrange for tables etc
+fit_ma <- fit_ma %>% 
+  mutate(
+    model = factor(model, levels = 1:2, labels = c("AR", "No AR")),
+    Type = factor(Type, levels = c("Unstandardized", "Standardized")),
+    y_var = factor(
+      y_var, levels = c("Affect", "Life satisfaction", "AN", "AP")
+    ),
+    x_var = factor(
+      x_var, levels = c("Hours", "Intrinsic", "Extrinsic", "hours_est")
+    ),
+    Parameter = fct_relevel(Parameter, "wy2 ~ wx1")
+  ) %>% 
+  arrange(model, Type, y_var, x_var, Parameter)
 ```
 
 ### Table of parameters
@@ -713,32 +770,10 @@ if (!file.exists(path)) {
 All the resulting parameters are listed in the table below.
 
 ```{r meta-analysis-parameter-table}
-# Function to get varying and average effects' posteriors from brmsfit
-get_ma_post <- function(x) {
-  coef(x, summary = FALSE) %>%
-    .[["Game"]] %>%
-    .[, , 1] %>%
-    as.data.frame() %>%
-    cbind(fixef(x, summary = FALSE)) %>%
-    as_tibble() %>% 
-    describe_posterior(centrality = "mean", ci = 0.95) %>%
-    rename(Game = Parameter)
-}
-get_ma_post <- memoise(get_ma_post, cache = cd)
-
-# Table of all parameters from meta-analyses
-ma_pars <- fit_ma %>%
-  mutate(out = map(fit, get_ma_post)) %>%
-  select(-fit, -out, -data, -name) %>%
-  unnest(out2) %>%
-  select(-CI, -starts_with("ROPE")) %>%
-  mutate(Game = str_replace(Game, "Intercept", "Average"))
-
-# Interactive table so reader can find what they're looking for
-ma_pars %>% 
+fit_ma %>% 
+  select(model:Parameter, summary) %>% 
+  unnest(summary) %>% 
   mutate(
-    pd = percent(pd, .1),
-    across(c(model, Type, y_var, x_var, Parameter, Game), factor),
     across(where(is.numeric), ~format(round(.x, 2), nsmall = 2)),
     Estimate = str_glue("{Mean} [{CI_low}, {CI_high}]")
   ) %>% 
@@ -749,44 +784,6 @@ ma_pars %>%
     rownames = FALSE
   ) %>% 
   formatStyle(TRUE, `font-size` = '12px')
-```
-
-### Average effects
-
-This figure shows the average (across games) effects from meta-analyses of the game-specific lavaan fits ("partial pooling") and from the completely pooled lavaan model (one model fit to all games' data). Unstandardized parameters are shown.
-
-```{r riclpm-ma-lavaan-averages}
-#| fig.height: 5
-#| fig.cap: >
-#|  Average RICLPM regression parameters from the pooled and meta-analytic models. Columns are different x variables, and rows different y variables. e.g. wy2 ~ wy1 indicates the lagged effect of y at previous timepoint on y at current timepoint.
-
-ma_pars %>%
-  filter(Game == "Average", Type == "Unstandardized") %>%
-  ggplot(aes(Mean, Parameter)) +
-  scale_x_continuous(
-    "Estimated parameter (95%CI)",
-    breaks = pretty_breaks()
-  ) +
-  scale_color_discrete("Model") +
-  geom_vline(xintercept = 0, lty = 2, size = .25) +
-  geom_pointrangeh(
-    aes(xmin = CI_low, xmax = CI_high, color = "Partially pooled")
-  ) +
-  geom_pointrangeh(
-    data = pars_riclpm %>%
-      filter(
-        str_detect(Parameter, " ~ "),
-        Type == "Unstandardized",
-        Model == "Pooled"
-      ),
-    aes(x = est, xmin = ci.lower, xmax = ci.upper, color = "Pooled"),
-    position = position_nudge(y = .15)
-  ) +
-  facet_grid(y_var ~ x_var) +
-  guides(
-    color = guide_legend(direction = "vertical")
-  ) +
-  theme(legend.position = "bottom")
 ```
 
 ### Hours <-> WB
@@ -803,14 +800,11 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
     x_lab = case_when(
       x_var == "Hours" ~ "Play",
       x_var == "Intrinsic" ~ "Intrinsic",
-      x_var == "Extrinsic" ~ "Extrinsic",
-      x_var == "hours_est" ~ "Estimated~hours"
+      x_var == "Extrinsic" ~ "Extrinsic"
     ),
     y_lab = case_when(
       y_var == "Affect" ~ "Affect",
-      y_var == "Life satisfaction" ~ "Life~satisfaction",
-      y_var == "AN" ~ "Negative~affect",
-      y_var == "AP" ~ "Positive~affect"
+      y_var == "Life satisfaction" ~ "Life~satisfaction"
     ),
     Panel_label = case_when(
       Parameter == "wx2 ~ wx1" ~
@@ -826,39 +820,36 @@ Order <- distinct(fit_ma, x_var, y_var, Parameter) %>%
   mutate(
     Parameter_order = factor(
       Parameter,
-      levels = c("wy2 ~ wx1", "wx2 ~ wy1", "wy2 ~ wy1", "wx2 ~ wx1")
+      levels = c("wy2 ~ wx1", "wx2 ~ wy1")
     )
   ) %>%
   arrange(Parameter_order, y_var) %>%
   mutate(Panel_label = fct_inorder(Panel_label))
 
-# Functions in R/
-source(here("R", "meta-analysis-helpers.R"))
+# Only these are needed
+forest_plot_data <- fit_ma %>% 
+  filter(
+    model == "AR", 
+    Type == "Unstandardized",
+    y_var %in% c("Affect", "Life satisfaction"),
+    x_var %in% c("Hours", "Intrinsic", "Extrinsic"),
+    Parameter %in% c("wy2 ~ wx1", "wx2 ~ wy1")
+  ) %>% 
+  left_join(Order) %>% 
+  select(-model, -Type)
 ```
 
 ```{r forest-hours-wb}
 #| fig.height: 5
-#| fig.cap: >
-#|  Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
+#| fig.cap: "Plot"
 
-fit_ma_sum <- summarize_ma(fit_ma)
-fp_1 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  parameters = c("wy2 ~ wx1"),
-  lavaan = FALSE,
-  x_limits = c(-.3, .4)
-)
-fp_2 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  parameters = c("wx2 ~ wy1"),
-  lavaan = FALSE,
-  x_limits = c(-.05, .06)
-)
-(fp_1 + theme(axis.title.x = element_blank())) / fp_2
+forest_plot_data %>% 
+  filter(x_var == "Hours") %>% 
+  forest_plot()
+```
+
+
+```{r, include = FALSE}
 agg_png(
   "Figures/Fig-forest-hours-wb.png", 
   width = W, height = W*0.6, units = "cm", res = 400
@@ -873,23 +864,9 @@ dev.off()
 #|  Figure as above but also displaying the underlying lavaan fits' point estimates and 95%CIs.
 
 # Also see in comparison to lavaan model estimates
-fp_1 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  parameters = c("wy2 ~ wx1"),
-  lavaan = TRUE,
-  x_limits = c(-.3, .4)
-)
-fp_2 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  parameters = c("wx2 ~ wy1"),
-  lavaan = TRUE,
-  x_limits = c(-.05, .06)
-)
-(fp_1 + theme(axis.title.x = element_blank())) / fp_2
+forest_plot_data %>% 
+  filter(x_var == "Hours") %>% 
+  forest_plot(lavaan = TRUE)
 ```
 
 ### Experiences <-> WB
@@ -899,77 +876,26 @@ fp_2 <- forest_plot(
 #| fig.cap: >
 #|  Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (motivations to well-being). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
 
-fp_1 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Intrinsic",
-  parameters = c("wy2 ~ wx1"),
-  lavaan = FALSE,
-  x_limits = c(-.2, .5)
-) +
+a <- forest_plot_data %>% 
+  filter(x_var %in% c("Intrinsic"), Parameter == "wy2 ~ wx1") %>% 
+  forest_plot() +
   theme(axis.title.x = element_blank())
-fp_2 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Intrinsic",
-  parameters = c("wx2 ~ wy1"),
-  lavaan = FALSE,
-  x_limits = c(-.15, .35)
-) +
-  theme(axis.title.x = element_blank())
-fp_3 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Extrinsic",
-  parameters = c("wy2 ~ wx1"),
-  lavaan = FALSE,
-  x_limits = c(-.5, .4)
-)
-fp_4 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Extrinsic",
-  parameters = c("wx2 ~ wy1"),
-  lavaan = FALSE,
-  x_limits = c(-.35, .35)
-)
-fp_1 / fp_3
 
+b <- forest_plot_data %>% 
+  filter(x_var %in% c("Extrinsic"), Parameter == "wy2 ~ wx1") %>% 
+  forest_plot()
+
+a/b
+```
+
+
+```{r, include = FALSE}
 agg_png(
   "Figures/Fig-forest-exp-wb.png", 
   width = W, height = W*0.6, units = "cm", res = 400
 )
 last_plot()
 dev.off()
-```
-
-```{r forest-motivations-wb-2}
-#| fig.height: 5
-#| fig.cap: >
-#|  Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining motivations and well-being (well-being to motivations). Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
-
-fp_2 / fp_4
-```
-
-### Autocorrelations
-
-```{r forest-autocorrelations}
-#| fig.height: 4
-#| fig.cap: >
-#|  Forest plots of meta-analytic raw lagged regression coefficients from models examining average hours played and well-being, showing only the well-being autocorrelations. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
-
-forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  parameters = c("wy2 ~ wy1"),
-  lavaan = TRUE,
-  x_limits = c(-.1, .8)
-) +
-  scale_x_continuous(
-    "Estimated lagged effect",
-    breaks = pretty_breaks()
-  )
 ```
 
 ### Some post-hoc calculations
@@ -1002,21 +928,24 @@ avg_ranges <- d %>%
   )
 fit_ma %>%
   filter(
+    model == "AR",
     Type == "Unstandardized",
-    Parameter == "wy2 ~ wx1"
+    Parameter == "wy2 ~ wx1",
+    x_var != "hours_est",
+    y_var %in% c("Affect", "Life satisfaction")
   ) %>%
   left_join(avg_ranges) %>% 
   mutate(
     hypothesis = map2(
-      fit,
+      posterior,
       Mean_range,
-      ~ hypothesis(.x, str_glue("Intercept * {.y} = 0")) %>% .[[1]]
+      ~ hypothesis(.x, str_glue("Average * {.y} = 0")) %>% .[[1]]
     )
   ) %>%
   unnest(hypothesis) %>%
   select(x_var, y_var, Mean_range, Parameter, Estimate:CI.Upper) %>%
   kbl(digits = 3, caption = "ES of average hours per week on WB") %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 We then turn to a second question, how much would the average player need to increase their play to result in a subjectively noticeable effect. Anvari and Lakens estimated that a 2% movement might be a lower limit to a subjectively noticeable change in well-being using a similar measurement scale. 
@@ -1031,21 +960,26 @@ subjective_thresholds <- tibble(
 )
 
 # Table of effects and thresholds
-fit_ma_sum$summary %>% 
+fit_ma %>%
   filter(
+    model == "AR",
     Type == "Unstandardized",
     Parameter == "wy2 ~ wx1",
-    Game == "Average"
+    x_var != "hours_est",
+    y_var %in% c("Affect", "Life satisfaction")
   ) %>% 
-  select(x_var, y_var, Effect = Mean) %>% 
+  select(x_var, y_var, summary) %>% 
   arrange(x_var, y_var) %>% 
+  unnest(summary) %>% 
+  select(x_var, y_var, Game, Effect = Mean) %>% 
+  filter(Game == "Average") %>% 
   left_join(subjective_thresholds) %>% 
   mutate(`Change needed` = Threshold / abs(Effect)) %>% 
   kbl(
     digits = 2, 
     caption = "Estimated required change in X to elicit a subjectively noticeable change in well-being outcomes"
   ) %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 How much of posterior density is within ROPE defined by A&L subjectively noticeable limits?
@@ -1054,27 +988,31 @@ How much of posterior density is within ROPE defined by A&L subjectively noticea
 # Table of percentages of effects' posterior distributions with ROPE (as defined by thresholds for being subjectively noticed)
 fit_ma %>%
   filter(
+    model == "AR",
+    Type == "Unstandardized",
     Parameter == "wy2 ~ wx1",
-    y_var %in% c("Affect", "Life satisfaction"),
-    Type == "Unstandardized"
+    x_var != "hours_est",
+    y_var %in% c("Affect", "Life satisfaction")
   ) %>%
   left_join(subjective_thresholds) %>% 
   mutate(
     out = map2(
-      fit,
+      posterior,
       Threshold,
-      ~ describe_posterior(.x, rope_range = c(-.y, .y), rope_ci = 1) %>%
-        select(-Parameter)
+      ~ describe_posterior(.x, rope_range = c(-.y, .y), rope_ci = 1) %>% 
+        rename(Game = Parameter) %>% 
+        filter(Game == "Average")
     )
-  ) %>%
-  unnest(out) %>%
-  select(x_var, y_var, Threshold, CI_low, CI_high, ROPE_Percentage) %>%
+  ) %>% 
+  select(x_var, y_var, out, Threshold) %>% 
+  unnest(out) %>% 
+  select(x_var, y_var, Threshold, Game, CI_low, CI_high, ROPE_Percentage) %>%
   mutate(ROPE_Percentage = percent(ROPE_Percentage, .1)) %>%
   kbl(
     digits = 2,
     caption = "ROPE percentages below threshold"
   ) %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ## Subjective time
@@ -1142,7 +1080,7 @@ d %>%
 A scatterplot of subjective on objective time. Only person-waves with both variables present are included.
 
 ```{r time-subjective-objective-scatterplot}
-#| fig.height: 7
+#| fig.height: 4
 #| fig.cap: >
 #|  Scatterplots of subjectively estimated average hours of daily play on objective behavioural hours played. Dashed line indicates identity, solid lines are simple regression lines. Small blue points are individual participants, and solid dark points are bivariate sample means.
 
@@ -1203,99 +1141,50 @@ d %>%
   group_by(Wave) %>%
   summarise(mean_cl_boot(Difference)) %>%
   kbl(digits = 2, caption = "Estimation errors (Estimated - Behaviour)") %>% 
-  kable_styling(full_width = FALSE, font_size = 12)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ### Meta-analysis
 
 ```{r forest-subjective-wb}
-#| fig.height: 5
-#| fig.cap: >
-#|  Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining subjectively estimated average hours played per day and well-being. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
-
-fp_1 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "hours_est",
-  parameters = c("wy2 ~ wx1"),
-  lavaan = TRUE,
-  x_limits = c(-.35, .55)
-)
-fp_2 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "hours_est",
-  parameters = c("wx2 ~ wy1"),
-  lavaan = TRUE,
-  x_limits = c(-.15, .2)
-)
-fp_1 / fp_2
-```
-
-## Affect
-
-We also analyze positive and negative affect separately.
-
-```{r}
-#| fig.height: 3
-#| fig.cap: >
-#|  Forest plots of meta-analytic raw cross-lagged regression coefficients from models examining the effects of play time on negative and positive affect. Shaded curves indicate approximate posterior densities, which are numerically summarised by means and 95%CIs in the right margin. Numbers below average effects indicate posterior probabilities of direction.
-fp_1 <- forest_plot(
-  object = fit_ma_sum,
-  type = "Unstandardized",
-  x_var = "Hours",
-  y_var = c("AN", "AP"),
-  parameters = c("wy2 ~ wx1"),
-  lavaan = FALSE,
-  x_limits = c(-.3, .4)
-)
-fp_1
+fit_ma %>% 
+  filter(
+    model == "AR",
+    Type == "Unstandardized",
+    x_var == "Hours",
+    y_var %in% c("Affect", "Life satisfaction"),
+    Parameter == "wy2 ~ wx1"
+  ) %>% 
+  select(-posterior) %>% 
+  unnest(summary) %>% 
+  mutate(
+    pd = percent(pd, .1),
+    across(where(is.numeric), ~format(round(.x, 2), nsmall = 2)),
+    Estimate = str_glue("{Mean} [{CI_low}, {CI_high}]")
+  ) %>% 
+  select(y_var, Game, Estimate, pd) %>% 
+  kbl(caption = "Meta-analytic parameters of subjective time on WB") %>% 
+  row_spec(c(8, 16), TRUE) %>% 
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ## Variability
 
 ```{r}
-# Get means and SDs of effects
-x <- fit_ma %>% 
+fit_ma %>% 
   filter(
+    model == "AR",
     Type == "Unstandardized",
+    y_var %in% c("Affect", "Life satisfaction"),
     x_var == "Hours",
     Parameter == "wy2 ~ wx1"
   ) %>% 
-  mutate(
-    out = map(
-      fit,
-      ~as_draws_df(., variable = c("^b_", "^sd_"), regex = TRUE)
-    )
+  select(y_var, sd) %>% 
+  unnest(sd) %>% 
+  kbl(
+    caption = "Between game standard deviations of hours -> WB", digits = 2
   ) %>% 
-  select(y_var, out) %>% 
-  unnest(out) %>% 
-  rename(
-    b = b_Intercept,
-    sd = sd_Game__Intercept
-  ) %>% 
-  select(-starts_with("."))
-
-# Calculate 90% heterogeneity intervals
-x <- x %>% 
-  mutate(
-    lower = b - abs(qnorm(.025))*sd,
-    upper = b + abs(qnorm(.0975))*sd
-  )
-
-# Summarize
-x %>% 
-  group_by(y_var) %>% 
-  summarise(across(c(b, sd, lower, upper), median))
-
-x %>% 
-  group_by(y_var) %>% 
-  mean_qi() %>% 
-  select(-starts_with(".")) %>% 
-  group_by(y_var) %>% 
-  pivot_longer(where(is.numeric)) %>% 
-  separate(name, c("par", "x")) %>% 
-  pivot_wider(names_from = x)
+  kable_classic(full_width = FALSE, html_font = Font)
 ```
 
 ## System information
