@@ -205,7 +205,12 @@ invites <- read_csv(here("Data", "invites.csv")) %>%
 tmp <- bind_rows(
   select(invites, -date),
   d %>% filter(Responded) %>% count(Game, wid)
-) %>%
+)
+tmp_total <- tmp %>% 
+  group_by(wid) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(Game = "Total")
+tmp <- bind_rows(tmp, tmp_total) %>% 
   arrange(Game, wid) %>%
   group_by(Game) %>%
   mutate(
@@ -220,7 +225,8 @@ tmp <- bind_rows(
     `Wave 3` = str_glue("{n_3} ({R_rate_3})")
   ) %>%
   select(Game, Invites:`Wave 3`) %>%
-  mutate(across(everything(), ~ str_replace(., "NA", "0")))
+  mutate(across(everything(), ~ str_replace(., "NA", "0"))) %>% 
+  ungroup()
 tmp %>%   
   kbl(caption = "Number of people (response/retention rate) participating at each wave.") %>% 
   kable_styling(full_width = FALSE, font_size = 12)
@@ -287,16 +293,160 @@ tmp %>%
    <td style="text-align:left;"> 97 (21.2%) </td>
    <td style="text-align:left;"> 85 (87.6%) </td>
   </tr>
+  <tr>
+   <td style="text-align:left;"> Total </td>
+   <td style="text-align:left;"> 5,237,192 </td>
+   <td style="text-align:left;"> 38,577 (0.7%) </td>
+   <td style="text-align:left;"> 14,642 (38.0%) </td>
+   <td style="text-align:left;"> 11,097 (75.8%) </td>
+  </tr>
 </tbody>
 </table>
 
 ```r
 # Also save this table for MS
 tmp %>% 
-  ungroup() %>% 
   flextable() %>% 
   save_as_docx(path = "Figures/Retention-rates.docx")
 ```
+
+### Missingness
+
+Here we report on the % missing for each variable
+
+
+```r
+install.packages("naniar")
+```
+
+```
+## Installing naniar [0.6.1] ...
+## 	OK [linked cache]
+```
+
+```r
+library(naniar)
+d %>% 
+  select(Game, pid, Wave, Affect, `Life satisfaction`, Hours) %>% 
+  complete(nesting(Game, pid), Wave) %>% 
+  group_by(Game, Wave) %>% 
+  select(-pid) %>% 
+  miss_var_summary() %>% 
+  select(-n_miss) %>% 
+  mutate(pct_miss = percent(pct_miss/100, .1)) %>% 
+  pivot_wider(
+    names_from = c(Wave, variable), 
+    values_from = pct_miss, 
+    names_glue = "{variable} ({Wave})"
+    ) %>% 
+  kbl(caption = "Percent missing at each wave for key variables") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
+```
+
+<table class="table" style="font-size: 12px; width: auto !important; margin-left: auto; margin-right: auto;">
+<caption style="font-size: initial !important;">(\#tab:unnamed-chunk-1)Percent missing at each wave for key variables</caption>
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Game </th>
+   <th style="text-align:left;"> Affect (Wave 1) </th>
+   <th style="text-align:left;"> Life satisfaction (Wave 1) </th>
+   <th style="text-align:left;"> Hours (Wave 1) </th>
+   <th style="text-align:left;"> Affect (Wave 2) </th>
+   <th style="text-align:left;"> Life satisfaction (Wave 2) </th>
+   <th style="text-align:left;"> Hours (Wave 2) </th>
+   <th style="text-align:left;"> Affect (Wave 3) </th>
+   <th style="text-align:left;"> Life satisfaction (Wave 3) </th>
+   <th style="text-align:left;"> Hours (Wave 3) </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> AC:NH </td>
+   <td style="text-align:left;"> 3.5% </td>
+   <td style="text-align:left;"> 1.9% </td>
+   <td style="text-align:left;"> 0.2% </td>
+   <td style="text-align:left;"> 63.8% </td>
+   <td style="text-align:left;"> 63.2% </td>
+   <td style="text-align:left;"> 0.1% </td>
+   <td style="text-align:left;"> 70.6% </td>
+   <td style="text-align:left;"> 70.3% </td>
+   <td style="text-align:left;"> 0.2% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Apex Legends </td>
+   <td style="text-align:left;"> 8.7% </td>
+   <td style="text-align:left;"> 4.9% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 66.8% </td>
+   <td style="text-align:left;"> 65.6% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 81.1% </td>
+   <td style="text-align:left;"> 80.6% </td>
+   <td style="text-align:left;"> 0.1% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> EVE Online </td>
+   <td style="text-align:left;"> 5.1% </td>
+   <td style="text-align:left;"> 2.2% </td>
+   <td style="text-align:left;"> 1.7% </td>
+   <td style="text-align:left;"> 74.6% </td>
+   <td style="text-align:left;"> 73.7% </td>
+   <td style="text-align:left;"> 0.9% </td>
+   <td style="text-align:left;"> 75.9% </td>
+   <td style="text-align:left;"> 75.7% </td>
+   <td style="text-align:left;"> 1.2% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Forza Horizon 4 </td>
+   <td style="text-align:left;"> 4.5% </td>
+   <td style="text-align:left;"> 2.2% </td>
+   <td style="text-align:left;"> 0.2% </td>
+   <td style="text-align:left;"> 62.0% </td>
+   <td style="text-align:left;"> 61.5% </td>
+   <td style="text-align:left;"> 0.1% </td>
+   <td style="text-align:left;"> 70.4% </td>
+   <td style="text-align:left;"> 69.9% </td>
+   <td style="text-align:left;"> 0.1% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> GT Sport </td>
+   <td style="text-align:left;"> 4.5% </td>
+   <td style="text-align:left;"> 2.2% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 60.9% </td>
+   <td style="text-align:left;"> 60.3% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 71.9% </td>
+   <td style="text-align:left;"> 71.6% </td>
+   <td style="text-align:left;"> 0.1% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> Outriders </td>
+   <td style="text-align:left;"> 2.8% </td>
+   <td style="text-align:left;"> 1.7% </td>
+   <td style="text-align:left;"> 0.1% </td>
+   <td style="text-align:left;"> 75.8% </td>
+   <td style="text-align:left;"> 75.4% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 76.5% </td>
+   <td style="text-align:left;"> 75.9% </td>
+   <td style="text-align:left;"> 0.0% </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> The Crew 2 </td>
+   <td style="text-align:left;"> 4.4% </td>
+   <td style="text-align:left;"> 2.2% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 79.9% </td>
+   <td style="text-align:left;"> 79.4% </td>
+   <td style="text-align:left;"> 0.0% </td>
+   <td style="text-align:left;"> 81.4% </td>
+   <td style="text-align:left;"> 81.4% </td>
+   <td style="text-align:left;"> 0.0% </td>
+  </tr>
+</tbody>
+</table>
+
 
 ### Differences
 
@@ -330,7 +480,7 @@ tmp %>%
   facet_grid(name~Game, scales = "free_y", margins = "Game")
 ```
 
-<img src="02-descriptive_files/figure-html/unnamed-chunk-1-1.png" width="672" style="display: block; margin: auto;" />
+<img src="02-descriptive_files/figure-html/unnamed-chunk-2-1.png" width="672" style="display: block; margin: auto;" />
 
 ```r
 out <- tmp %>% 
@@ -501,11 +651,12 @@ sessionInfo()
 ```
 
 ```
-## R version 4.1.2 (2021-11-01)
+## R version 4.1.3 (2022-03-10)
 ## Platform: aarch64-apple-darwin20 (64-bit)
-## Running under: macOS Monterey 12.2.1
+## Running under: macOS Monterey 12.3
 ## 
 ## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRblas.0.dylib
 ## LAPACK: /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
@@ -515,19 +666,19 @@ sessionInfo()
 ## [1] stats     graphics  grDevices datasets  utils     methods   base     
 ## 
 ## other attached packages:
-##  [1] lubridate_1.8.0   forcats_0.5.1     stringr_1.4.0     dplyr_1.0.7      
-##  [5] purrr_0.3.4       readr_2.0.2       tidyr_1.1.4       tibble_3.1.5     
-##  [9] tidyverse_1.3.1   here_1.0.1        kableExtra_1.3.4  broom.mixed_0.2.7
-## [13] lme4_1.1-27.1     Matrix_1.3-4      flextable_0.7.0   gtsummary_1.4.2  
-## [17] scales_1.1.1      knitr_1.36        ggplot2_3.3.5    
+##  [1] naniar_0.6.1      lubridate_1.8.0   forcats_0.5.1     stringr_1.4.0    
+##  [5] dplyr_1.0.7       purrr_0.3.4       readr_2.0.2       tidyr_1.1.4      
+##  [9] tibble_3.1.5      tidyverse_1.3.1   here_1.0.1        kableExtra_1.3.4 
+## [13] broom.mixed_0.2.7 lme4_1.1-27.1     Matrix_1.3-4      flextable_0.7.0  
+## [17] gtsummary_1.4.2   scales_1.1.1      knitr_1.36        ggplot2_3.3.5    
 ## 
 ## loaded via a namespace (and not attached):
 ##  [1] nlme_3.1-153        fs_1.5.0            bit64_4.0.5        
 ##  [4] webshot_0.5.2       httr_1.4.2          rprojroot_2.0.2    
-##  [7] tools_4.1.2         backports_1.2.1     bslib_0.3.1        
+##  [7] tools_4.1.3         backports_1.2.1     bslib_0.3.1        
 ## [10] utf8_1.2.2          R6_2.5.1            DBI_1.1.1          
 ## [13] colorspace_2.0-2    withr_2.4.2         tidyselect_1.1.1   
-## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.2     
+## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.3     
 ## [19] textshaping_0.3.5   cli_3.0.1           rvest_1.0.1        
 ## [22] gt_0.3.1            xml2_1.3.2          officer_0.4.1      
 ## [25] labeling_0.4.2      bookdown_0.24       sass_0.4.0         
@@ -539,16 +690,16 @@ sessionInfo()
 ## [43] jquerylib_0.1.4     generics_0.1.0      jsonlite_1.7.2     
 ## [46] vroom_1.5.5         zip_2.2.0           magrittr_2.0.1     
 ## [49] Rcpp_1.0.7          munsell_0.5.0       fansi_0.5.0        
-## [52] gdtools_0.2.4       lifecycle_1.0.1     stringi_1.7.5      
-## [55] yaml_2.2.1          MASS_7.3-54         grid_4.1.2         
-## [58] parallel_4.1.2      crayon_1.4.1        lattice_0.20-45    
-## [61] haven_2.4.3         splines_4.1.2       hms_1.1.1          
-## [64] pillar_1.6.3        uuid_0.1-4          boot_1.3-28        
-## [67] codetools_0.2-18    reprex_2.0.1        glue_1.4.2         
-## [70] evaluate_0.14       modelr_0.1.8        data.table_1.14.2  
-## [73] broom.helpers_1.4.0 renv_0.14.0         tzdb_0.1.2         
-## [76] vctrs_0.3.8         nloptr_1.2.2.2      cellranger_1.1.0   
-## [79] gtable_0.3.0        assertthat_0.2.1    xfun_0.26          
-## [82] broom_0.7.9         ragg_1.1.3          survival_3.2-13    
-## [85] viridisLite_0.4.0   ellipsis_0.3.2
+## [52] gdtools_0.2.4       visdat_0.5.3        lifecycle_1.0.1    
+## [55] stringi_1.7.5       yaml_2.2.1          MASS_7.3-54        
+## [58] grid_4.1.3          parallel_4.1.3      crayon_1.4.1       
+## [61] lattice_0.20-45     haven_2.4.3         splines_4.1.3      
+## [64] hms_1.1.1           pillar_1.6.3        uuid_0.1-4         
+## [67] boot_1.3-28         codetools_0.2-18    reprex_2.0.1       
+## [70] glue_1.4.2          evaluate_0.14       modelr_0.1.8       
+## [73] data.table_1.14.2   broom.helpers_1.4.0 renv_0.14.0        
+## [76] tzdb_0.1.2          vctrs_0.3.8         nloptr_1.2.2.2     
+## [79] cellranger_1.1.0    gtable_0.3.0        assertthat_0.2.1   
+## [82] xfun_0.26           broom_0.7.9         ragg_1.1.3         
+## [85] survival_3.2-13     viridisLite_0.4.0   ellipsis_0.3.2
 ```

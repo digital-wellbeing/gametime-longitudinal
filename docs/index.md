@@ -1,7 +1,7 @@
 --- 
 title: "Game play and well-being | Online analysis supplement"
 author: "Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, & Andy Przybylski"
-date: "2022-03-11"
+date: "2022-06-14"
 site: bookdown::bookdown_site
 output: bookdown::bs4_book
 url: https://digital-wellbeing.github.io/gametime-longitudinal
