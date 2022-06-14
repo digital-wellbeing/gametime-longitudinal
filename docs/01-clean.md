@@ -208,6 +208,7 @@ d <- d %>%
   select(
     Game, pid, wid,
     Affect, `Life satisfaction`,
+    AN = spane_neg, AP = spane_pos,
     Intrinsic, Extrinsic, hours_est,
     StartDate, Age, Gender, Experience
   ) %>%
@@ -1239,14 +1240,12 @@ test_dir(here("R/tests/testthat"))
 
 ```
 ## ✓ | F W S  OK | Context
-## ⠏ |         0 | session-overlap                                                 ⠸ |         4 | session-overlap                                                 ⠼ |         5 | session-overlap                                                 ✓ |         5 | session-overlap [18.2s]
+## ⠏ |         0 | session-overlap                                                 ⠋ |         1 | session-overlap                                                 ⠸ |         4 | session-overlap                                                 ⠼ |         5 | session-overlap                                                 ✓ |         5 | session-overlap [33.7s]
 ## 
 ## ══ Results ═════════════════════════════════════════════════════════════════════
-## Duration: 18.2 s
+## Duration: 33.8 s
 ## 
 ## [ FAIL 0 | WARN 0 | SKIP 0 | PASS 5 ]
-## 
-## Keep up the good work.
 ```
 
 ## System information
@@ -1257,11 +1256,12 @@ sessionInfo()
 ```
 
 ```
-## R version 4.1.2 (2021-11-01)
+## R version 4.1.3 (2022-03-10)
 ## Platform: aarch64-apple-darwin20 (64-bit)
-## Running under: macOS Monterey 12.2.1
+## Running under: macOS Monterey 12.3
 ## 
 ## Matrix products: default
+## BLAS:   /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRblas.0.dylib
 ## LAPACK: /Library/Frameworks/R.framework/Versions/4.1-arm64/Resources/lib/libRlapack.dylib
 ## 
 ## locale:
@@ -1279,11 +1279,11 @@ sessionInfo()
 ## 
 ## loaded via a namespace (and not attached):
 ##  [1] fs_1.5.0            bit64_4.0.5         webshot_0.5.2      
-##  [4] httr_1.4.2          rprojroot_2.0.2     tools_4.1.2        
+##  [4] httr_1.4.2          rprojroot_2.0.2     tools_4.1.3        
 ##  [7] backports_1.2.1     bslib_0.3.1         utf8_1.2.2         
 ## [10] R6_2.5.1            DBI_1.1.1           colorspace_2.0-2   
 ## [13] withr_2.4.2         tidyselect_1.1.1    processx_3.5.2     
-## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.2     
+## [16] downlit_0.2.1       bit_4.0.4           compiler_4.1.3     
 ## [19] textshaping_0.3.5   cli_3.0.1           rvest_1.0.1        
 ## [22] gt_0.3.1            xml2_1.3.2          desc_1.4.0         
 ## [25] labeling_0.4.2      stringfish_0.15.2   bookdown_0.24      
@@ -1297,15 +1297,14 @@ sessionInfo()
 ## [49] Matrix_1.3-4        waldo_0.3.1         Rcpp_1.0.7         
 ## [52] munsell_0.5.0       fansi_0.5.0         lifecycle_1.0.1    
 ## [55] stringi_1.7.5       yaml_2.2.1          snakecase_0.11.0   
-## [58] grid_4.1.2          parallel_4.1.2      crayon_1.4.1       
-## [61] lattice_0.20-45     haven_2.4.3         splines_4.1.2      
+## [58] grid_4.1.3          parallel_4.1.3      crayon_1.4.1       
+## [61] lattice_0.20-45     haven_2.4.3         splines_4.1.3      
 ## [64] hms_1.1.1           ps_1.6.0            pillar_1.6.3       
 ## [67] pkgload_1.2.2       codetools_0.2-18    reprex_2.0.1       
-## [70] glue_1.4.2          praise_1.0.0        evaluate_0.14      
-## [73] RcppParallel_5.1.4  broom.helpers_1.4.0 renv_0.14.0        
-## [76] modelr_0.1.8        vctrs_0.3.8         tzdb_0.1.2         
-## [79] cellranger_1.1.0    gtable_0.3.0        qs_0.25.1          
-## [82] assertthat_0.2.1    xfun_0.26           broom_0.7.9        
-## [85] ragg_1.1.3          survival_3.2-13     viridisLite_0.4.0  
-## [88] ellipsis_0.3.2
+## [70] glue_1.4.2          evaluate_0.14       RcppParallel_5.1.4 
+## [73] broom.helpers_1.4.0 renv_0.14.0         modelr_0.1.8       
+## [76] vctrs_0.3.8         tzdb_0.1.2          cellranger_1.1.0   
+## [79] gtable_0.3.0        qs_0.25.1           assertthat_0.2.1   
+## [82] xfun_0.26           broom_0.7.9         ragg_1.1.3         
+## [85] survival_3.2-13     viridisLite_0.4.0   ellipsis_0.3.2
 ```

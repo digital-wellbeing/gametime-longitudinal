@@ -70,7 +70,7 @@
 </h1>
 <p>This document contains a missing data sensitivity analysis.</p>
 <p>We first load the required packages.</p>
-<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu">knitr</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/pkg/knitr/man/opts_chunk.html">opts_chunk</a></span><span class="op">$</span><span class="fu">set</span><span class="op">(</span>cache <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://lavaan.ugent.be">lavaan</a></span><span class="op">)</span>
 <span class="kw"><a href="https://rdrr.io/r/base/library.html">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/paul-buerkner/brms">brms</a></span><span class="op">)</span>
@@ -94,7 +94,7 @@
 <span class="co">## number of imputations</span>
 <span class="va">m</span> <span class="op">&lt;-</span> <span class="fl">20</span></code></pre></div>
 <p>For the sensitivity analysis we keep only <code>Affect</code> and <code>Hours</code>.</p>
-<div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">d_riclpm_wide</span> <span class="op">&lt;-</span> <span class="fu">read_rds</span><span class="op">(</span><span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Temp"</span>, <span class="st">"d_riclpm_wide.rds"</span><span class="op">)</span><span class="op">)</span>
 <span class="co"># keep only necessary vars</span>
 <span class="va">d</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">d_riclpm_wide</span>, <span class="va">y_var</span> <span class="op">==</span> <span class="st">"Affect"</span>, <span class="va">x_var</span> <span class="op">==</span> <span class="st">"Hours"</span><span class="op">)</span></code></pre></div>
@@ -103,7 +103,7 @@
 <span class="header-section-number">5.1</span> Imputation model<a class="anchor" aria-label="anchor" href="#imputation-model"><i class="fas fa-link"></i></a>
 </h2>
 <p>We use <code>MICE</code> to impute a missing not a random (MNAR) mechanism using <a href="https://stefvanbuuren.name/fimd/sec-sensitivity.html">delta adjustment</a>. Predictive mean matching (PMM) is used for the actual imputations.</p>
-<div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb93"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">#' Perform imputation using MICE</span>
 <span class="co">#'</span>
 <span class="co">#' @param data the data</span>
@@ -149,16 +149,16 @@
   <span class="va">imp</span>
 <span class="op">}</span></code></pre></div>
 <p>Here we inspect the imputations, by creating density plots of observed and imputed values for delta = 0 and -2.</p>
-<div class="sourceCode" id="cb100"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb94"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">imp2</span> <span class="op">&lt;-</span> <span class="fu">mice_mnar_delta</span><span class="op">(</span>data <span class="op">=</span> <span class="va">d</span>, delta <span class="op">=</span> <span class="op">-</span><span class="fl">2</span>, m <span class="op">=</span> <span class="va">m</span><span class="op">)</span>
 <span class="va">imp_mar</span> <span class="op">&lt;-</span> <span class="fu">mice_mnar_delta</span><span class="op">(</span>data <span class="op">=</span> <span class="va">d</span>, delta <span class="op">=</span> <span class="fl">0</span>, m <span class="op">=</span> <span class="va">m</span><span class="op">)</span>
 <span class="fu"><a href="https://amices.org/mice/reference/densityplot.mids.html">densityplot</a></span><span class="op">(</span><span class="va">imp_mar</span>, <span class="op">~</span> <span class="va">y1</span> <span class="op">+</span> <span class="va">y2</span> <span class="op">+</span> <span class="va">y3</span><span class="op">)</span></code></pre></div>
 <div class="inline-figure"><img src="04-missing-data_files/figure-html/densityplot-imputed-1.png" width="672" style="display: block; margin: auto;"></div>
-<div class="sourceCode" id="cb101"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb95"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu"><a href="https://amices.org/mice/reference/densityplot.mids.html">densityplot</a></span><span class="op">(</span><span class="va">imp2</span>, <span class="op">~</span> <span class="va">y1</span> <span class="op">+</span> <span class="va">y2</span> <span class="op">+</span> <span class="va">y3</span><span class="op">)</span></code></pre></div>
 <div class="inline-figure"><img src="04-missing-data_files/figure-html/densityplot-imputed-2.png" width="672" style="display: block; margin: auto;"></div>
 <p>We also compare the imputed slopes for 14 participants, asuming delta 0 or -2.</p>
-<div class="sourceCode" id="cb102"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb96"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">#' Plot the slopes for 15 participants and the imputations</span>
 <span class="va">plot_imputed_slopes</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">imp</span><span class="op">)</span> <span class="op">{</span>
   <span class="va">tmp</span> <span class="op">&lt;-</span> <span class="fu">mice</span><span class="fu">::</span><span class="fu"><a href="https://amices.org/mice/reference/complete.mids.html">complete</a></span><span class="op">(</span><span class="va">imp</span>, action <span class="op">=</span> <span class="st">"all"</span><span class="op">)</span>
@@ -193,7 +193,7 @@
 </h2>
 <p>For the analysis step we use the same lavaan model as for the main analysis.</p>
 <p>We then fit the lavaan model to each imputed data set.</p>
-<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb97"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">get_lavaan_pars</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span>
   <span class="fu">bind_rows</span><span class="op">(</span>
     <span class="fu"><a href="https://rdrr.io/pkg/lavaan/man/parameterEstimates.html">parameterestimates</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -246,7 +246,7 @@
   <span class="va">fit_multi_imp</span>
 <span class="op">}</span></code></pre></div>
 <p>All lavaan models are then meta-analyzed</p>
-<div class="sourceCode" id="cb104"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb98"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co"># Load cache if it exists</span>
 <span class="va">file_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://here.r-lib.org//reference/here.html">here</a></span><span class="op">(</span><span class="st">"Temp"</span>, <span class="st">"lavaan-MI.rds"</span><span class="op">)</span>
 <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/files.html">file.exists</a></span><span class="op">(</span><span class="va">file_path</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span>
@@ -263,7 +263,7 @@
   <span class="fu">write_rds</span><span class="op">(</span><span class="va">fit_mnar_imp</span>, file <span class="op">=</span> <span class="va">file_path</span><span class="op">)</span>
 <span class="op">}</span></code></pre></div>
 <p>We perform the meta-analysis for each delta value and for the m (imputed) lavaan models.</p>
-<div class="sourceCode" id="cb105"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb99"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="co">#' Run MA with MICE lavaan objects</span>
 <span class="co">#'</span>
 <span class="co">#' @param data a list with results from the m imputations</span>
@@ -376,7 +376,7 @@
   <span class="fu"><a href="https://rdrr.io/r/base/do.call.html">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">.</span><span class="op">)</span>
 <span class="fu"><a href="https://rdrr.io/r/base/rm.html">rm</a></span><span class="op">(</span><span class="va">fit_ma_imp</span><span class="op">)</span></code></pre></div>
 <p>Here we check so that the correct number of imputations were performed.</p>
-<div class="sourceCode" id="cb106"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb100"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">all</span> <span class="op">%&gt;%</span>
   <span class="fu">group_by</span><span class="op">(</span><span class="va">delta</span>, <span class="va">Parameter</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu">summarise</span><span class="op">(</span>n <span class="op">=</span> <span class="fu">n</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></code></pre></div>
@@ -396,7 +396,7 @@
 ## 10 0     wx2 ~ wy1   160
 ## # … with 14 more rows</code></pre>
 <p>We also take a look at some of the imputed coefficients.</p>
-<div class="sourceCode" id="cb108"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb102"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">all</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html">filter</a></span><span class="op">(</span><span class="va">Game</span> <span class="op">==</span> <span class="st">"Intercept"</span>, <span class="va">delta</span> <span class="op">==</span> <span class="op">-</span><span class="fl">1</span><span class="op">)</span> <span class="op">%&gt;%</span>
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>imp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html">factor</a></span><span class="op">(</span><span class="va">imp</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span>
@@ -420,7 +420,7 @@ Figure 5.1: Results from the missing data sensivitity analysis. Coefficients plu
 <span class="header-section-number">5.3</span> Sensitivity plot<a class="anchor" aria-label="anchor" href="#sensitivity-plot"><i class="fas fa-link"></i></a>
 </h2>
 <p>We plot all regression coefs, “wy2 ~ wx1” should be the most interesting one.</p>
-<div class="sourceCode" id="cb109"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb103"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="va">pooled</span> <span class="op">%&gt;%</span>
   <span class="fu">tibble</span><span class="op">(</span><span class="op">)</span> <span class="op">%&gt;%</span> 
   <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html">mutate</a></span><span class="op">(</span>Game <span class="op">=</span> <span class="fu">if_else</span><span class="op">(</span><span class="va">Game</span> <span class="op">==</span> <span class="st">"Intercept"</span>, <span class="st">"Average"</span>, <span class="va">Game</span><span class="op">)</span><span class="op">)</span> <span class="op">%&gt;%</span> 
@@ -475,7 +475,7 @@ Figure 5.2: Coefficients plus 95% CIs for the pooled MI models
 <footer class="bg-primary text-light mt-5"><div class="container"><div class="row">
 
   <div class="col-12 col-md-6 mt-3">
-    <p>"<strong>Game play and well-being | Online analysis supplement</strong>" was written by Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski. It was last built on 2022-03-11.</p>
+    <p>"<strong>Game play and well-being | Online analysis supplement</strong>" was written by Matti Vuorre, Niklas Johannes, Kristoffer Magnusson, &amp; Andy Przybylski. It was last built on 2022-06-14.</p>
   </div>
 
   <div class="col-12 col-md-6 mt-3">
