@@ -73,7 +73,12 @@ invites <- read_csv(here("Data", "invites.csv")) %>%
 tmp <- bind_rows(
   select(invites, -date),
   d %>% filter(Responded) %>% count(Game, wid)
-) %>%
+)
+tmp_total <- tmp %>% 
+  group_by(wid) %>% 
+  summarise(n = sum(n)) %>% 
+  mutate(Game = "Total")
+tmp <- bind_rows(tmp, tmp_total) %>% 
   arrange(Game, wid) %>%
   group_by(Game) %>%
   mutate(
@@ -88,16 +93,41 @@ tmp <- bind_rows(
     `Wave 3` = str_glue("{n_3} ({R_rate_3})")
   ) %>%
   select(Game, Invites:`Wave 3`) %>%
-  mutate(across(everything(), ~ str_replace(., "NA", "0")))
+  mutate(across(everything(), ~ str_replace(., "NA", "0"))) %>% 
+  ungroup()
 tmp %>%   
   kbl(caption = "Number of people (response/retention rate) participating at each wave.") %>% 
   kable_styling(full_width = FALSE, font_size = 12)
 # Also save this table for MS
 tmp %>% 
-  ungroup() %>% 
   flextable() %>% 
   save_as_docx(path = "Figures/Retention-rates.docx")
 ```
+
+### Missingness
+
+Here we report on the % missing for each variable
+
+```{r}
+install.packages("naniar")
+library(naniar)
+d %>% 
+  select(Game, pid, Wave, Affect, `Life satisfaction`, Hours) %>% 
+  complete(nesting(Game, pid), Wave) %>% 
+  group_by(Game, Wave) %>% 
+  select(-pid) %>% 
+  miss_var_summary() %>% 
+  select(-n_miss) %>% 
+  mutate(pct_miss = percent(pct_miss/100, .1)) %>% 
+  pivot_wider(
+    names_from = c(Wave, variable), 
+    values_from = pct_miss, 
+    names_glue = "{variable} ({Wave})"
+    ) %>% 
+  kbl(caption = "Percent missing at each wave for key variables") %>% 
+  kable_styling(full_width = FALSE, font_size = 12)
+```
+
 
 ### Differences
 

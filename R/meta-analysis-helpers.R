@@ -1,125 +1,81 @@
-#' Summarize meta-analyses
-#' @param object a grouped df with all the brmsfits; e.g., fit_ma
+#' Get posterior samples from a meta-analysis
 #'
-#' @return a list with
-#'  - `summary`:
-#'  - `draws`: the posterior draws
-summarize_ma <- function(object) {
-
-  # Data for plotting meta-analyses' posterior distributions
-  p_data <- object %>%
-    mutate(out = map(fit, get_ma_post)) %>%
-    select(-fit) %>%
-    unnest(out) %>%
-    rename(Average = Intercept) %>%
-    pivot_longer(`AC:NH`:Average, names_to = "Game") %>%
-    mutate(Game = factor(Game, levels = c("Average", rev(unique(d$Game))))) %>%
-    ungroup() %>%
-    left_join(Order)
-
-  # Summaries of posterior distributions
-  fit_ma_sum <- p_data %>%
-    group_by(y_var, x_var, Parameter, Type, Game, Panel_label) %>%
-    summarise(
-      describe_posterior(
-        value,
-        test = c("pd"),
-        centrality = "mean"
-      ) %>% select(-Parameter)
-    ) %>%
-    ungroup() %>%
-    mutate(
-      across(
-        c(Mean, CI_low, CI_high),
-        .fns = list(r = ~ format(round(., 2), nsmall = 2))
-      )
-    ) %>%
-    mutate(Res = str_glue("{Mean_r} [{CI_low_r}, {CI_high_r}]")) %>%
-    # Ordered labels
-    left_join(Order) %>%
-    mutate(Game = factor(Game, levels = c("Average", rev(unique(d$Game)))))
-
-  list(
-    summary = fit_ma_sum,
-    draws = p_data
-  )
+#' @param x a brmsfit
+#'
+#' @return a tibble with posterior samples of the game-specific and mean parameters
+get_ma_post <- function(x) {
+  coef(x, summary = FALSE) %>%
+    .[["Game"]] %>%
+    .[, , 1] %>%
+    as.data.frame() %>%
+    cbind(fixef(x, summary = FALSE)) %>%
+    as_tibble() %>%
+    rename(Average = Intercept)
 }
 
 #' Function to draw forest plots
-#' @param object object created using `summarize_ma`
-#' @param type
-#' @param x_var
-#' @param parameters
+#' @param data
 #' @param lavaan
 #'
 #' @return a ggplot2 object
-forest_plot <- function(object,
-                        type = "Unstandardized",
-                        x_var = "Hours",
-                        parameters = c("wy2 ~ wx1", "wx2 ~ wy1"),
-                        x_limits = c(-0.2, 0.2),
-                        lavaan = FALSE) {
-  out <- object$summary %>%
-    filter(
-      Type == {{ type }},
-      x_var == {{ x_var }},
-      Parameter %in% {{ parameters }}
-    ) %>%
+forest_plot <- function(
+    data,
+    x_limits = c(-0.2, 0.2),
+    lavaan = FALSE
+) {
+  out <- unnest(data, summary) %>%
     # We can use the xintercept mapping to control alpha below
     ggplot(aes(Mean, Game)) +
-    coord_cartesian(xlim = x_limits) +
+    # coord_cartesian(xlim = x_limits) +
     scale_x_continuous(
       "Estimated cross-lagged effect",
       breaks = pretty_breaks(7),
-      expand = expansion(.01)
+      expand = expansion(.0)
     ) +
     scale_y_discrete(
-      expand = expansion(c(0.15, 0.25)),
+      expand = expansion(c(0.08, 0.1)),
       labels = function(x) ifelse(x == "Average", "**Average**", x)
     ) +
     scale_fill_brewer(
       palette = "Set1", direction = 1, aesthetics = c("fill", "color")
     ) +
-    scale_alpha_manual(values = c(.4, .8)) +
-    # Vertical line for 0
     geom_vline(xintercept = 0, size = .1, col = "grey60") +
+    scale_alpha_manual(values = c(.4, .8)) +
     # Posterior densities
     stat_halfeye(
-      data = object$draws %>%
-        filter(
-          Type == {{ type }},
-          x_var == {{ x_var }},
-          Parameter %in% {{ parameters }}
-        ),
+      data = unnest(data, posterior) %>%
+        select(-data, -summary) %>%
+        pivot_longer(
+          c(unique(d$Game), "Average"),
+          names_to = "Game"
+        ) %>%
+        mutate(Game = fct_relevel(Game, "Average")),
       aes(
         value,
         fill = stat(x > 0),
         alpha = Game == "Average"
       ),
-      height = .75, adjust = 1.5, point_interval = NULL,
+      height = .75, adjust = 1, point_interval = NULL,
       show.legend = FALSE, normalize = "panels"
     ) +
     # Summary geoms and texts
     geom_pointrangeh(
       aes(x = Mean, xmin = CI_low, xmax = CI_high),
-      size = .2, fatten = 1.25, position = position_nudge(y = -.01)
+      size = .175, fatten = 1, position = position_nudge(y = -.01)
     ) +
     # CIs in right margin
     geom_text(
-      vjust = -0.5, size = 2.3, hjust = 1,
-      aes(x = x_limits[2], label = Res),
+      vjust = -0.5, size = 2.3, hjust = 1.05,
+      aes(
+        x = Inf,
+        label = str_glue("{number(Mean, .01)} [{number(CI_low, .01)}, {number(CI_high, .01)}]")
+        ),
       family = Font
     ) +
     # Posterior probability of direction for average
     geom_text(
-      data = object$summary %>%
-        filter(Game == "Average") %>%
-        filter(
-          Type == {{ type }},
-          x_var == {{ x_var }},
-          Parameter %in% {{ parameters }}
-        ),
-      vjust = 1.4, size = 2.3,
+      data = . %>% filter(Game == "Average"),
+      vjust = 1.4, size = 2.1,
       aes(
         x = sign(Mean) * 0,
         hjust = ifelse(sign(Mean) == 1, 0, 1),
@@ -140,14 +96,8 @@ forest_plot <- function(object,
   if (lavaan) {
     out +
       geom_pointrangeh(
-        data = d_ma %>%
-          filter(
-            Type == {{ type }},
-            x_var == {{ x_var }},
-            Parameter %in% {{ parameters }}
-          ) %>%
-          left_join(Order),
-        col = "gray40", fatten = 1.25, size = .33,
+        data = unnest(data, data),
+        fatten = 1.25, size = .33, shape = 2,
         aes(x = est, xmin = ci.lower, xmax = ci.upper),
         position = position_nudge(y = -.075)
       )
