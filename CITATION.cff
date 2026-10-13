@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: Code and data supplement to "Time spent playing video games is unlikely to impact well-being"
+version: 1.0.1
+license: MIT
+type: software
+abstract: Code and data reported in the manuscript.
+message: "If you use this code or data, please cite it as indicated."
+authors:
+  - family-names: Vuorre
+    given-names: Matti
+    orcid: https://orcid.org/0000-0001-5052-066X
+    affiliation: Tilburg University
+  - family-names: Johannes
+    given-names: Niklas
+    orcid: https://orcid.org/0000-0001-6612-2842
+  - family-names: Magnusson
+    given-names: Kristoffer
+    orcid: https://orcid.org/0000-0003-0713-0556
+    affiliation: Karolinska Institutet
+  - family-names: Przybylski
+    given-names: Andrew
+    orcid: https://orcid.org/0000-0001-5547-2185
+    affiliation: University of Oxford
+keywords:
+  - psychology
